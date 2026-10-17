@@ -2,11 +2,12 @@
 const S = require('../src/sesame-core.js');
 const { encodePNG } = require('./png.js');
 const fs = require('fs');
+const path = require('path');
 
 const args = process.argv.slice(2);
 const SAVE = args.includes('--save');
-const OUT = '/home/user/sesame-code/test/out';
-if (SAVE) fs.mkdirSync(OUT, { recursive: true });
+const OUT = path.join(__dirname, 'out');
+fs.mkdirSync(OUT, { recursive: true });
 
 let pass = 0, fail = 0;
 const failures = [];

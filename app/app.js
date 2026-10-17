@@ -1079,12 +1079,558 @@
         const r = S.decodeImage({ data: g.frame.data, width: g.w, height: g.h },
           { thresholdC: 13, maxDim: 1280, ladder: false, timeBudget: 900 });
         fsBusy = false;
-        if (r.ok) { fsHit(r); return; }
+        if (r.ok) { fsHit(r, { data: g.frame.data, w: g.w, h: g.h, kind: 'cam' }); return; }
       }
     }
     fsTimer = setTimeout(fsLoop, 240);
   }
-  function fsHit(r) {
+  /* ---------------------------------------------------- 完全掃描器：掃描效果
+   * 掃到成功時依序播放：亮度掃過內外環一圈 → 芝麻以波浪放大縮小 →
+   * 把掃到的圓形區域重新生成乾淨版本（顏色與角度形變對上原圖，像從圖片
+   * 複製出來）→ 往下飛行、圓形變幻成結果面板（芝麻變文字、圓環變按鈕）。
+   * 可由 fs-foot 的開關關閉；prefers-reduced-motion 時自動停用。 */
+  const FX_KEY = 'sesame.fsfx';
+  let fsFxOn = true;
+  try { const v = localStorage.getItem(FX_KEY); if (v != null) fsFxOn = v !== '0'; } catch (e) {}
+  let fxRAF = 0;
+  function fxReduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  function syncFsFxToggle() {
+    const b = $('fs-fx-toggle');
+    if (b) b.setAttribute('aria-checked', fsFxOn ? 'true' : 'false');
+  }
+  function fxStop(revealNow) {
+    if (fxRAF) { cancelAnimationFrame(fxRAF); fxRAF = 0; }
+    const cv = $('fs-fx');
+    if (cv) {
+      const c = cv.getContext('2d');
+      if (c) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); }
+      cv.style.opacity = '1';
+    }
+    const res = $('fs-result');
+    if (res) {
+      res.classList.remove('fx-pending');
+      if (revealNow && !res.hidden) {
+        res.classList.remove('show');
+        void res.offsetWidth;
+        res.classList.add('show');
+      }
+    }
+  }
+  /** 來源影像 → 離屏 canvas（圖片掃描時當作場景背景鋪在 fs-bg） */
+  function fxMakeHitCanvas(hit) {
+    if (hit._cv) return hit._cv;
+    const cv = document.createElement('canvas');
+    cv.width = hit.w; cv.height = hit.h;
+    const c = cv.getContext('2d');
+    const im = c.createImageData(hit.w, hit.h);
+    im.data.set(hit.data);
+    c.putImageData(im, 0, 0);
+    hit._cv = cv;
+    return cv;
+  }
+  function fsPaintBg(hitCv) {
+    const b = $('fs-bg'), camEl = fsSection.querySelector('.fs-cam');
+    if (!b || !camEl || !hitCv) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rect = camEl.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width * dpr)), h = Math.max(1, Math.round(rect.height * dpr));
+    if (b.width !== w || b.height !== h) { b.width = w; b.height = h; }
+    const c = b.getContext('2d');
+    if (!c) return;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, w, h);
+    const cover = Math.max(rect.width / hitCv.width, rect.height / hitCv.height);
+    const ox = (rect.width - hitCv.width * cover) / 2, oy = (rect.height - hitCv.height * cover) / 2;
+    c.setTransform(cover * dpr, 0, 0, cover * dpr, ox * dpr, oy * dpr);
+    c.drawImage(hitCv, 0, 0);
+  }
+  function fsClearBg() {
+    const b = $('fs-bg');
+    if (b) {
+      const c = b.getContext('2d');
+      if (c) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, b.width, b.height); }
+    }
+  }
+  /** 從掃描影像取樣芝麻色／底色（含漸層方向），讓複製品的顏色對上原圖 */
+  function fxSampleColors(hit, geo, R6u, bRad, mir) {
+    const out = { inkRGB: [30, 30, 32], bgRGB: [244, 244, 246] };
+    try {
+      const { data, w, h } = hit;
+      const mapper = S._internal.makeMapper(geo.cx, geo.cy, geo.A, geo.B, geo.phi || 0);
+      const samples = [];
+      const stride = Math.max(1, Math.floor(Math.max(w, h) / 180));
+      const c1 = Math.cos(bRad), s1 = Math.sin(bRad);
+      for (let y = 0; y < h; y += stride) {
+        for (let x = 0; x < w; x += stride) {
+          const q = mapper.fromImage(x + 0.5, y + 0.5);
+          const rho = Math.hypot(q.u, q.v);
+          if (rho > 0.9 || rho < 0.14) continue;
+          const i = (y * w + x) * 4;
+          const rr = data[i], gg = data[i + 1], bb = data[i + 2];
+          const lum = 0.299 * rr + 0.587 * gg + 0.114 * bb;
+          // 模型座標 → 設計座標（與 renderCode 的方向一致，漸層角可直接沿用）
+          const du = (q.u * c1 + q.v * s1) * R6u;
+          const dv = mir ? (q.u * s1 - q.v * c1) * R6u : (-q.u * s1 + q.v * c1) * R6u;
+          samples.push({ lum, rr, gg, bb, du, dv });
+        }
+      }
+      if (samples.length < 50) return out;
+      samples.sort((a, b) => a.lum - b.lum);
+      const n = samples.length;
+      const meanRGB = (arr, s, e) => {
+        let r = 0, g = 0, b = 0;
+        for (let i = s; i < e; i++) { r += arr[i].rr; g += arr[i].gg; b += arr[i].bb; }
+        const k = Math.max(1, e - s);
+        return [Math.round(r / k), Math.round(g / k), Math.round(b / k)];
+      };
+      out.inkRGB = meanRGB(samples, 0, Math.max(1, Math.floor(n * 0.14)));
+      const bgS = Math.floor(n * 0.62);
+      out.bgRGB = meanRGB(samples, bgS, n);
+      // 底色漸層：對亮部樣本做「亮度 ~ 設計座標」線性回歸，找出變亮方向
+      const bg = samples.slice(bgS);
+      if (bg.length >= 60) {
+        let cnt = 0, su = 0, sv = 0, sl = 0, suu = 0, svv = 0, suv = 0, sul = 0, svl = 0;
+        for (const s of bg) {
+          cnt++; su += s.du; sv += s.dv; sl += s.lum;
+          suu += s.du * s.du; svv += s.dv * s.dv; suv += s.du * s.dv;
+          sul += s.du * s.lum; svl += s.dv * s.lum;
+        }
+        const mu = su / cnt, mv = sv / cnt, ml = sl / cnt;
+        const a11 = suu - cnt * mu * mu, a12 = suv - cnt * mu * mv, a22 = svv - cnt * mv * mv;
+        const rhs1 = sul - cnt * mu * ml, rhs2 = svl - cnt * mv * ml;
+        const det = a11 * a22 - a12 * a12;
+        if (Math.abs(det) > 1e-6) {
+          const gx = (rhs1 * a22 - rhs2 * a12) / det;
+          const gy = (a11 * rhs2 - a12 * rhs1) / det;
+          const proj = bg.map(s => gx * (s.du - mu) + gy * (s.dv - mv));
+          const sorted = proj.slice().sort((p, q) => p - q);
+          const lo = sorted[Math.floor(sorted.length * 0.08)];
+          const hi = sorted[Math.floor(sorted.length * 0.92)];
+          if (hi - lo > 7) {
+            let r0 = 0, g0 = 0, b0 = 0, k0 = 0, r1 = 0, g1 = 0, b1 = 0, k1 = 0;
+            const band = (hi - lo) * 0.18;
+            for (let i = 0; i < bg.length; i++) {
+              const p = proj[i];
+              if (p <= lo + band) { r0 += bg[i].rr; g0 += bg[i].gg; b0 += bg[i].bb; k0++; }
+              else if (p >= hi - band) { r1 += bg[i].rr; g1 += bg[i].gg; b1 += bg[i].bb; k1++; }
+            }
+            if (k0 >= 8 && k1 >= 8) {
+              out.bgStyle = {
+                from: [Math.round(r0 / k0), Math.round(g0 / k0), Math.round(b0 / k0)],
+                to: [Math.round(r1 / k1), Math.round(g1 / k1), Math.round(b1 / k1)],
+                angle: Math.atan2(gy, gx) * 180 / Math.PI
+              };
+              delete out.bgRGB;
+            }
+          }
+        }
+      }
+    } catch (e) { /* 取樣失敗就用預設色 */ }
+    return out;
+  }
+  /** 播放掃描效果；成功啟動回傳 true（結果面板由動畫結尾變換出來） */
+  function fxPlay(hit, r) {
+    const geo = r.geometry;
+    if (!geo || !(geo.A > 0) || !(geo.B > 0)) return false;
+    let g2 = null;
+    try { g2 = S.encode(r.bytes, { version: r.version, ecLevel: r.ecLevel }); } catch (e) { g2 = null; }
+    if (!g2 || !g2.ok) return false;
+    const cv = $('fs-fx'), camEl = fsSection.querySelector('.fs-cam'), resEl = $('fs-result');
+    if (!cv || !camEl || !resEl) return false;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return false;
+
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const R6u = S.frameOuter(r.version);
+    const bRad = (geo.baseDeg || 0) * Math.PI / 180;
+    const mir = !!geo.mirror;
+    const plateU = R6u + 0.5;
+
+    /* 乾淨版本：重新編碼，取樣原圖顏色；角度形變在繪製時用仿射對上 */
+    const cols = fxSampleColors(hit, geo, R6u, bRad, mir);
+    let clean = null;
+    try {
+      clean = S.renderCode(g2, Object.assign({
+        shape: 'circle', pxPerUnit: 9, rotDeg: 0, marginU: 0.5
+      }, cols));
+    } catch (e) { clean = null; }
+    if (!clean) return false;
+    const cleanCv = document.createElement('canvas');
+    cleanCv.width = clean.width; cleanCv.height = clean.height;
+    {
+      const c2 = cleanCv.getContext('2d');
+      const im = c2.createImageData(clean.width, clean.height);
+      im.data.set(clean.data);
+      c2.putImageData(im, 0, 0);
+    }
+    const halfU = clean.width / 2 / clean.pxPerUnit;
+
+    /* 圖片掃描：場景背景鋪在 fs-bg 圖層（相機模式由 live 畫面當背景） */
+    const hitCv = hit.kind === 'file' ? fxMakeHitCanvas(hit) : null;
+    if (hitCv) fsPaintBg(hitCv);
+
+    /* 結果面板先佔位量測（不可見），飛行動畫以此為目標 */
+    resEl.hidden = false;
+    resEl.classList.remove('show');
+    resEl.classList.add('fx-pending');
+    const camR0 = camEl.getBoundingClientRect();
+    const rr = resEl.getBoundingClientRect();
+    const actEl = resEl.querySelector('.fs-actions');
+    const payEl = $('fs-payload');
+    const actR = actEl ? actEl.getBoundingClientRect() : rr;
+    const payR = payEl ? payEl.getBoundingClientRect() : rr;
+    const target = {
+      x: rr.left - camR0.left, y: rr.top - camR0.top, w: Math.max(40, rr.width), h: Math.max(30, rr.height),
+      ax: actR.left - camR0.left, ay: actR.top - camR0.top + actR.height / 2,
+      aw: Math.max(60, actR.width),
+      px: payR.left - camR0.left, py: payR.top - camR0.top + Math.min(payR.height / 2, 16),
+      pw: Math.max(40, payR.width)
+    };
+    let panelFill = 'rgba(16,20,25,.72)';
+    try {
+      const s = getComputedStyle(resEl).backgroundColor;
+      if (s && s !== 'rgba(0, 0, 0, 0)') panelFill = s;
+    } catch (e) { /* keep default */ }
+
+    /* 時序（ms） */
+    const T_SWEEP = 80, SWEEP_LEN = 820, T_SWEEP2 = 190;
+    const T_WAVE = 330, WAVE_SPAN = 720, POP = 380;
+    const T_REVEAL = 1260, REVEAL_LEN = 620;
+    const T_LIFT = 1900, LIFT_LEN = 220;
+    const T_FLY = 2120, FLY_LEN = 880;
+    const T_TOTAL = T_FLY + FLY_LEN + 180;
+
+    /* 芝麻波浪：由內往外、帶一點角度起伏的觸發順序 */
+    const bodyOut = S.bodyOuter(r.version), r0 = S.ringRadius(0);
+    const pops = [];
+    for (const cell of g2.cells) {
+      if (!cell.state) continue;
+      const norm = Math.max(0, Math.min(1, (cell.r - r0) / Math.max(1e-6, bodyOut - r0)));
+      const wob = Math.sin(cell.deg * 3 * Math.PI / 180) * 0.5 + 0.5;
+      pops.push({
+        x: cell.r * Math.cos(cell.deg * Math.PI / 180),
+        y: cell.r * Math.sin(cell.deg * Math.PI / 180),
+        ang: (cell.deg + (cell.state - 1) * 45) * Math.PI / 180,
+        t0: T_WAVE + norm * WAVE_SPAN + wob * 90
+      });
+    }
+    /* 芝麻 → 文字：飛行時散開成小點落進文字列 */
+    const dots = [];
+    for (let i = 0; i < 8 && pops.length; i++) dots.push(pops[(i * 37 + 11) % pops.length]);
+
+    const easeOut = p => 1 - Math.pow(1 - p, 3);
+    const easeInOut = p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
+    const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v);
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const smooth = (a, b, v) => { const t2 = clamp01((v - a) / (b - a)); return t2 * t2 * (3 - 2 * t2); };
+    const roundRectPath = (c, x, y, w, h, rad) => {
+      const rr2 = Math.max(0, Math.min(rad, w / 2, h / 2));
+      c.moveTo(x + rr2, y);
+      c.arcTo(x + w, y, x + w, y + h, rr2);
+      c.arcTo(x + w, y + h, x, y + h, rr2);
+      c.arcTo(x, y + h, x, y, rr2);
+      c.arcTo(x, y, x + w, y, rr2);
+      c.closePath();
+    };
+
+    const resize = () => {
+      const rect = camEl.getBoundingClientRect();
+      const w = Math.max(1, Math.round(rect.width * dpr)), h = Math.max(1, Math.round(rect.height * dpr));
+      if (cv.width !== w || cv.height !== h) {
+        cv.width = w; cv.height = h;
+        if (hitCv) fsPaintBg(hitCv);
+      }
+    };
+    /* 設計座標（u）→ 螢幕（css px）的仿射 */
+    function xfNow() {
+      const rect = camEl.getBoundingClientRect();
+      const cover = Math.max(rect.width / hit.w, rect.height / hit.h);
+      const ox = (rect.width - hit.w * cover) / 2, oy = (rect.height - hit.h * cover) / 2;
+      const k = 1 / R6u;
+      const c1 = Math.cos(bRad), s1 = Math.sin(bRad);
+      const phi = geo.phi || 0, cp = Math.cos(phi), sp = Math.sin(phi);
+      const A = geo.A, B = geo.B;
+      let d00, d01, d10, d11;
+      if (!mir) {
+        d00 = (cp * A * c1 - sp * B * s1) * k; d01 = (-cp * A * s1 - sp * B * c1) * k;
+        d10 = (sp * A * c1 + cp * B * s1) * k; d11 = (-sp * A * s1 + cp * B * c1) * k;
+      } else {
+        d00 = (cp * A * c1 - sp * B * s1) * k; d01 = (cp * A * s1 + sp * B * c1) * k;
+        d10 = (sp * A * c1 + cp * B * s1) * k; d11 = (sp * A * s1 - cp * B * c1) * k;
+      }
+      return {
+        m00: d00 * cover, m01: d01 * cover, m10: d10 * cover, m11: d11 * cover,
+        e: ox + cover * geo.cx, f: oy + cover * geo.cy, cover, ox, oy
+      };
+    }
+    const setD = (m) => ctx.setTransform(m.m00 * dpr, m.m10 * dpr, m.m01 * dpr, m.m11 * dpr, m.e * dpr, m.f * dpr);
+    const setR = (a, b, c, d, e, f) => ctx.setTransform(a * dpr, b * dpr, c * dpr, d * dpr, e * dpr, f * dpr);
+    /* renderCode 畫布像素 → 螢幕（canvas setTransform 參數序） */
+    const rxf = (m) => ({
+      a: m.m00 / clean.pxPerUnit, b: m.m10 / clean.pxPerUnit,
+      c: m.m01 / clean.pxPerUnit, d: m.m11 / clean.pxPerUnit,
+      e: m.e - (m.m00 + m.m01) * halfU, f: m.f - (m.m10 + m.m11) * halfU
+    });
+
+    let shown = false;
+    const t0 = performance.now();
+    try { window.__fxT0 = Date.now(); } catch (e) { /* 測試用時間錨點 */ }
+    function finish() {
+      if (fxRAF) { cancelAnimationFrame(fxRAF); fxRAF = 0; }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      cv.style.opacity = '1';
+      resEl.classList.remove('fx-pending');
+      if (!shown) {
+        shown = true;
+        resEl.classList.remove('show');
+        void resEl.offsetWidth;
+        resEl.classList.add('show');
+      }
+    }
+    function frame(now) {
+      const t = now - t0;
+      if (t >= T_TOTAL) { finish(); return; }
+      resize();
+      const x = xfNow();
+      const plateHx = plateU * Math.hypot(x.m00, x.m01);
+      const plateHy = plateU * Math.hypot(x.m10, x.m11);
+      const plateAng = Math.atan2(x.m10, x.m00);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cv.width / dpr, cv.height / dpr);
+
+      /* ── ① 亮度環過內外環一圈 ── */
+      const ringSweep = (t0s, rMid, lwU) => {
+        const p = clamp01((t - t0s) / SWEEP_LEN);
+        const post = clamp01((t - t0s - SWEEP_LEN) / 360);
+        if (t < t0s || post >= 1) return;
+        const fade = 1 - post * post;
+        const head = (60 + 360 * easeOut(p)) * Math.PI / 180;
+        setD(x);
+        ctx.globalCompositeOperation = 'lighter';
+        const seg = 12, tail = 150 * Math.PI / 180;
+        for (let i = 0; i < seg; i++) {
+          const q = i / seg;
+          const a1 = head - tail * q;
+          const a0 = head - tail * (q + 1 / seg) - 0.012;
+          const al = (1 - q) * (1 - q) * fade;
+          ctx.strokeStyle = 'rgba(190,225,255,' + (0.1 + 0.55 * al).toFixed(3) + ')';
+          ctx.lineWidth = lwU;
+          ctx.beginPath();
+          ctx.arc(0, 0, rMid, a0, a1);
+          ctx.stroke();
+        }
+        if (p < 1) {
+          ctx.strokeStyle = 'rgba(255,255,255,' + (0.9 * fade).toFixed(3) + ')';
+          ctx.lineWidth = lwU * 0.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, rMid, head - 0.2, head + 0.04);
+          ctx.stroke();
+        } else {
+          const q2 = 1 - post;
+          ctx.strokeStyle = 'rgba(210,235,255,' + (0.4 * q2 * q2).toFixed(3) + ')';
+          ctx.lineWidth = lwU * 0.9;
+          ctx.beginPath();
+          ctx.arc(0, 0, rMid, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+      };
+      ringSweep(T_SWEEP, S.metaMid(r.version), S.GEO.FRAME_T * 0.62);
+      ringSweep(T_SWEEP2, (S.GEO.INNER_RI + S.GEO.RI) / 2, S.GEO.INNER_T * 0.62);
+
+      /* ── ② 芝麻波浪：每顆芝麻放大再縮小 ── */
+      if (t > T_WAVE - 30 && t < T_WAVE + WAVE_SPAN + POP + 120) {
+        setD(x);
+        ctx.globalCompositeOperation = 'lighter';
+        const wq = clamp01((t - T_WAVE) / (WAVE_SPAN + POP));
+        if (wq > 0 && wq < 1) {
+          const wr = lerp(r0 * 0.72, bodyOut + 1.4, easeOut(wq));
+          ctx.strokeStyle = 'rgba(160,210,255,' + (0.06 + 0.34 * (1 - wq) * (1 - wq)).toFixed(3) + ')';
+          ctx.lineWidth = 0.34;
+          ctx.beginPath();
+          ctx.arc(0, 0, wr, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        for (const c of pops) {
+          const p = (t - c.t0) / POP;
+          if (p <= 0 || p >= 1) continue;
+          const s = 1 + 0.85 * Math.sin(Math.PI * p);
+          const al = 1 - p * p;
+          ctx.save();
+          ctx.translate(c.x, c.y);
+          ctx.rotate(c.ang);
+          ctx.strokeStyle = 'rgba(190,225,255,' + (0.8 * al).toFixed(3) + ')';
+          ctx.lineWidth = 0.22;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, S.GEO.SA * s * 1.06, S.GEO.SB * s * 1.06, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,' + (0.32 * al * al).toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, S.GEO.SA * s * 0.92, S.GEO.SB * s * 0.92, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+      }
+
+      /* 場景壓暗，讓複製品與結果區浮出來 */
+      const vign = smooth(T_REVEAL, T_REVEAL + REVEAL_LEN * 0.8, t) * 0.2
+        * (1 - smooth(T_FLY + FLY_LEN * 0.8, T_TOTAL - 120, t));
+      if (vign > 0.002) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = 'rgba(4,7,12,' + vign.toFixed(3) + ')';
+        ctx.fillRect(0, 0, cv.width / dpr, cv.height / dpr);
+      }
+
+      /* ── ③ 乾淨複製：掃描線自上而下顯影（顏色／形變對上原圖；起飛後交棒給 ④）── */
+      const revealP = clamp01((t - T_REVEAL) / REVEAL_LEN);
+      if (revealP > 0 && t < T_FLY) {
+        const rv = easeInOut(revealP);
+        const lift = (t >= T_LIFT && t < T_LIFT + LIFT_LEN)
+          ? Math.sin(Math.PI * (t - T_LIFT) / LIFT_LEN) * 0.03 : 0;
+        const xl = {
+          m00: x.m00 * (1 + lift), m01: x.m01 * (1 + lift),
+          m10: x.m10 * (1 + lift), m11: x.m11 * (1 + lift), e: x.e, f: x.f
+        };
+        const bx = x.e - plateHx, by = x.f - plateHy, bw = plateHx * 2, bh = plateHy * 2;
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.beginPath();
+        ctx.rect(bx, by, bw, Math.max(1, bh * rv));
+        ctx.clip();
+        ctx.beginPath();
+        ctx.ellipse(x.e, x.f, plateHx, plateHy, plateAng, 0, Math.PI * 2);
+        ctx.clip();
+        const q = rxf(xl);
+        setR(q.a, q.b, q.c, q.d, q.e, q.f);
+        ctx.drawImage(cleanCv, 0, 0);
+        ctx.restore();
+        if (rv < 1) {
+          const ly = by + bh * rv;
+          ctx.save();
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.beginPath();
+          ctx.ellipse(x.e, x.f, plateHx, plateHy, plateAng, 0, Math.PI * 2);
+          ctx.clip();
+          const band = ctx.createLinearGradient(0, ly - 15, 0, ly + 3);
+          band.addColorStop(0, 'rgba(160,210,255,0)');
+          band.addColorStop(0.72, 'rgba(190,225,255,0.45)');
+          band.addColorStop(1, 'rgba(255,255,255,0.92)');
+          ctx.fillStyle = band;
+          ctx.fillRect(bx, ly - 15, bw, 18);
+          ctx.restore();
+        }
+      }
+
+      /* ── ④ 往下飛行：圓形芝碼變幻成結果面板 ── */
+      const fp = clamp01((t - T_FLY) / FLY_LEN);
+      if (fp > 0) {
+        const pe = easeInOut(fp);
+        const sx0 = x.e - plateHx, sy0 = x.f - plateHy, sw0 = plateHx * 2, sh0 = plateHy * 2;
+        const rx = lerp(sx0, target.x, pe), ry = lerp(sy0, target.y, pe);
+        const rw = lerp(sw0, target.w, pe), rh = lerp(sh0, target.h, pe);
+        const rad = lerp(Math.min(sw0, sh0) / 2, 0, pe);
+        const cxr = rx + rw / 2, cyr = ry + rh / 2;
+
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.beginPath();
+        roundRectPath(ctx, rx, ry, rw, rh, rad);
+        ctx.clip();
+        ctx.globalAlpha = Math.min(1, pe * 1.7) * 0.92;
+        ctx.fillStyle = panelFill;
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.globalAlpha = 1;
+        /* 芝碼縮影隨飛行攤平（形變 → 正圓），最後淡出 */
+        const aCode = (1 - smooth(0.55, 0.96, fp)) * (1 - 0.22 * pe);
+        if (aCode > 0.01) {
+          const sc = (Math.min(rw, rh) * 0.5 * (1 - 0.35 * pe)) / plateU;
+          const mix = {
+            m00: lerp(x.m00, sc, pe), m01: lerp(x.m01, 0, pe),
+            m10: lerp(x.m10, 0, pe), m11: lerp(x.m11, sc, pe),
+            e: lerp(x.e, cxr, pe), f: lerp(x.f, cyr, pe)
+          };
+          const q = rxf(mix);
+          ctx.globalAlpha = aCode;
+          setR(q.a, q.b, q.c, q.d, q.e, q.f);
+          ctx.drawImage(cleanCv, 0, 0);
+          ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+
+        /* 圓環 → 按鈕：下緣弧攤平成按鈕列 */
+        const bq = smooth(0.16, 0.55, fp) * (1 - smooth(0.84, 1, fp));
+        if (bq > 0.01) {
+          const p0x = lerp(x.e - plateHx * 0.8, target.ax + 4, pe);
+          const p0y = lerp(x.f + plateHy * 0.72, target.ay, pe);
+          const p1x = lerp(x.e + plateHx * 0.8, target.ax + target.aw - 4, pe);
+          const p1y = lerp(x.f + plateHy * 0.72, target.ay, pe);
+          const cxq = (p0x + p1x) / 2, cyq = (p0y + p1y) / 2 + (1 - pe) * Math.max(plateHx, 30) * 0.85;
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          ctx.strokeStyle = 'rgba(190,225,255,' + (0.7 * bq).toFixed(3) + ')';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.moveTo(p0x, p0y);
+          ctx.quadraticCurveTo(cxq, cyq, p1x, p1y);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,255,255,' + (0.8 * bq).toFixed(3) + ')';
+          ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.moveTo(p0x, p0y);
+          ctx.quadraticCurveTo(cxq, cyq, p1x, p1y);
+          ctx.stroke();
+        }
+
+        /* 芝麻 → 文字：小點散開落進文字列 */
+        const dA = smooth(0.18, 0.38, fp) * (1 - smooth(0.78, 0.98, fp));
+        if (dA > 0.01) {
+          for (let i = 0; i < dots.length; i++) {
+            const d = dots[i];
+            const qd = clamp01((fp - 0.18 - i * 0.035) / 0.5);
+            if (qd <= 0 || qd >= 1) continue;
+            const qe = easeInOut(qd);
+            const sx = x.m00 * d.x + x.m01 * d.y + x.e;
+            const sy = x.m10 * d.x + x.m11 * d.y + x.f;
+            const tx = target.px + 10 + (dots.length > 1 ? i / (dots.length - 1) : 0.5) * Math.max(20, target.pw - 20);
+            const ty = target.py;
+            const px2 = lerp(sx, tx, qe), py2 = lerp(sy, ty, qe);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.fillStyle = 'rgba(220,240,255,' + (dA * Math.sin(Math.PI * qd)).toFixed(3) + ')';
+            const sz = lerp(3.2, 1.8, qe);
+            ctx.fillRect(px2 - sz / 2, py2 - sz / 2, sz, sz);
+          }
+        }
+
+        /* 結果面板現身（文字模糊浮現、按鈕依序彈入） */
+        if (!shown && fp >= 0.72) {
+          shown = true;
+          resEl.classList.remove('fx-pending', 'show');
+          void resEl.offsetWidth;
+          resEl.classList.add('show');
+        }
+      }
+
+      cv.style.opacity = String(1 - smooth(T_FLY + FLY_LEN * 0.86, T_TOTAL - 100, t));
+      fxRAF = requestAnimationFrame(frame);
+    }
+    fxRAF = requestAnimationFrame(frame);
+    return true;
+  }
+  if ($('fs-fx-toggle')) {
+    $('fs-fx-toggle').addEventListener('click', () => {
+      fsFxOn = !fsFxOn;
+      try { localStorage.setItem(FX_KEY, fsFxOn ? '1' : '0'); } catch (e) {}
+      syncFsFxToggle();
+      if (!fsFxOn) fxStop(true);
+    });
+    syncFsFxToggle();
+  }
+
+  function fsHit(r, hit) {
     fsLocked = true;
     $('fs-flash').classList.add('on');
     setTimeout(() => $('fs-flash').classList.remove('on'), 140);
@@ -1092,6 +1638,7 @@
     const text = r.text != null ? r.text : '';
     const payload = text || bytesToHex(r.bytes);
     $('fs-result').hidden = false;
+    $('fs-result').classList.remove('fx-pending', 'show');
     $('fs-payload').textContent = payload;
     const url = safeUrl(text);
     $('fs-open').classList.toggle('hidden', !url);
@@ -1099,7 +1646,15 @@
     $('fs-share').classList.toggle('hidden', !navigator.share);
     $('fs-copy').dataset.text = payload;
     fsStatus(t('fs.locked', { rings: r.rings }));
+    $('fs-hint').hidden = true;
     showResult(r, 0);   // 同步寫進掃描器的紀錄
+    /* 圖片掃描：把來源影像留在場景上 */
+    if (hit && hit.kind === 'file') fsPaintBg(fxMakeHitCanvas(hit));
+    /* 掃描效果：亮度環繞 → 芝麻波浪 → 乾淨複製 → 飛進結果區 */
+    if (fsFxOn && hit && !fxReduced()) {
+      if (fxPlay(hit, r)) return;      // 動畫結尾才把結果面板變換出來
+    }
+    $('fs-result').classList.remove('fx-pending');
   }
   function openFull() {
     if (fsSection.classList.contains('on')) return;
@@ -1107,6 +1662,10 @@
     fsSection.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     $('fs-result').hidden = true;
+    $('fs-result').classList.remove('fx-pending', 'show');
+    $('fs-hint').hidden = false;
+    fxStop(false);
+    fsClearBg();
     fillBands();
     startFsCam();
   }
@@ -1116,13 +1675,20 @@
     fsSection.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     stopFsCam();
+    fxStop(false);
+    fsClearBg();
     $('fs-result').hidden = true;
+    $('fs-result').classList.remove('fx-pending', 'show');
   }
   document.querySelectorAll('[data-fullscreen]').forEach(a =>
     a.addEventListener('click', (e) => { e.preventDefault(); go('#full'); }));
   $('fs-close').addEventListener('click', () => go('#scan'));
   $('fs-again').addEventListener('click', () => {
+    fxStop(false);
+    fsClearBg();
     $('fs-result').hidden = true;
+    $('fs-result').classList.remove('fx-pending', 'show');
+    $('fs-hint').hidden = false;
     fsLocked = false;
     if (fsStream) fsLoop(); else startFsCam();
   });
@@ -1149,7 +1715,7 @@
       fsStatus(t('scan.reading'));
       setTimeout(() => {
         const r = S.decodeImage({ data: frame.data, width: w, height: h }, { thresholdC: 13, maxDim: 1600, ladder: true, timeBudget: 6000 });
-        if (r.ok) fsHit(r);
+        if (r.ok) fsHit(r, { data: frame.data, w, h, kind: 'file' });
         else fsStatus(t('scan.fail', { ms: '0', err: r.error || '' }));
       }, 20);
     };
@@ -1236,5 +1802,5 @@
   })();
   generate();
   applyHash();
-  window.addEventListener('beforeunload', () => { stopMainCam(); stopFsCam(); });
+  window.addEventListener('beforeunload', () => { stopMainCam(); stopFsCam(); fxStop(false); });
 })();

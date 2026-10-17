@@ -11,8 +11,8 @@ const enc = S.encode(text, { ecLevel: 1 });
 console.log('encode:', enc.ok ? `V${enc.version} ${enc.ecKey} data=${enc.dataBytes} ec=${enc.ecBytes} cells=${enc.totalCells}` : enc.error);
 const img = S.renderCode(enc, { pxPerUnit: ppu, rotDeg: rot });
 console.log('image:', img.width + 'x' + img.height, 'rot', rot, 'pxPerUnit', img.pxPerUnit);
-fs.mkdirSync('/home/user/sesame-code/test/out', { recursive: true });
-fs.writeFileSync('/home/user/sesame-code/test/out/dbg.png', encodePNG(img.data, img.width, img.height));
+fs.mkdirSync(require('path').join(__dirname, 'out'), { recursive: true });
+fs.writeFileSync(require('path').join(__dirname, 'out', 'dbg.png'), encodePNG(img.data, img.width, img.height));
 
 // 手動跑管線
 const I = S._internal;

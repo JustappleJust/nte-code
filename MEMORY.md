@@ -1,7 +1,16 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**最新 UI 修正**：
+**最新修正（SVG 巨大留白）**：`toSVG` 的座標系一度混用「單位 u」與「×64 縮放」——路徑座標是 u，
+viewBox／背景矩形／底盤半徑卻乘了 64（且把半寬當成全寬），導致內容只佔畫布 1/32、四邊出現大片空白，
+`circle` 外形也因為 clip 半徑是畫布半寬的 2 倍而裁不掉四角。
+現在 viewBox 全程用 u：`v2 = 2·S`（全寬）、`plateR = o.plateU ?? R6 + margin`；viewBox 緊貼內容
+（方形 外框＋留白、圓形 再＋0.5u、圓形-標示 再＋4.9u），SVG 與 PNG 比例一致。
+標示字形輪廓改 `toFixed(4)`（u 尺度下仍保有列印解析度）。
+`test/style.js` 新增 6 項 viewBox 回歸檢查（47 通過 / 0 失敗）；`docs/example-*.svg` 重新導出；
+新增 `docs/svg-whitespace-before-after.png`（上排修正前／下排修正後）。
+
+**UI 修正**：
 1. 解決下拉選單（`.sel`）展開時被下方卡片（`.box`、`.fields`、`.stage`、`footer` 等）因堆疊上下文（stacking context）遮擋的問題：展開時動態提升祖先容器之 z-index（`:has(.sel.open)` 與 `.has-open-sel` 雙層機制），並支援視窗邊界自動向上彈出（`.open-up`），選單清單改用不透明背景與陰影，保證所有選項皆可見且能點擊。
 2. 頁尾底部的 `NTE · BAGEL · SESAMECODE` 色帶改回灰色（深淺主題分別採用 `--bar-alt` / `--on-bar-alt`），不再與頂欄同樣為藍色；色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示為雙圓環圓形藍底。
 PNG 導出仍使用 Blob URL + `S.encodePNG` 備援；單檔由 `node app/build-single.mjs` 產生。
@@ -49,6 +58,25 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 - PNG 導出：`saveBlob` 用 Blob URL（不再把 `canvas.toDataURL` 直接塞進 `<a href>`）；canvas 壓縮失敗時改走 `S.encodePNG`。
 - `docs/`：ui-generate / ui-label / ui-appearance / ui-scan / ui-spec / ui-light / ui-mobile（1440×950、手機 390×844）。
 - `README.md`：v6 條列、檔案結構、v6 驗證列、標示文字限制說明。
+
+## 第十二輪（SVG 巨大留白，使用者 1 點）
+導出的 SVG 四邊有錯誤的巨大留白（內容縮在中央，面積僅約 0.1%）。
+- 原因：`toSVG` 內 `const v2 = S * 64` 把 viewBox 與背景矩形放大 64 倍，但**所有 `<path>`／`<ellipse>` 座標都是 u**；
+  而且 `S = R6 + margin + padU` 是**半寬**（同 `renderCode` 的 `halfU`），`box` 卻用 `-v2/2 … v2` 當邊長，
+  等於半寬再 ×32。`plateR` 另外乘了 64（註解「64 = viewBox 每 u 的單位數」，這個縮放根本不存在），
+  使圓形底盤 clip 半徑 = 畫布半寬的 2 倍 → `circle` 四角裁不掉（PNG 是透明、SVG 是方角白底）。
+- 修正：座標系全部統一為 u —— `v2 = 2 * S`（全寬）、`plateR = o.plateU ?? (R6 + margin)`；
+  漸層跨度、mask 區域本來就用 v2，比例自然正確。標示字形輪廓 `n2` 改 `toFixed(4)`（u 尺度下 0.0001u ≈ 4K 輸出的 0.01 px）。
+- 驗證（resvg 光柵化 + `decodeImage`）：方形／圓形／圓形-標示 × 留白 0.5／2／6u 共 9 組，
+  與 `renderCode` 墨跡 **IoU 0.994–0.996**、墨量差 < 0.06 個百分點，全部解回原文；
+  修正前同一份比對的內容只佔面積 0.10%、9 組全部「找不到外框環」。
+- 一併重出 `docs/example-1.svg`、`docs/example-2.svg`（label 外形、`ecLevel 1`、解回原 URL：
+  `https://justapplejust.github.io/nte-code/app/index.html` 8 圈 / `https://discord.gg/GtCdyxxWSN` 5 圈，
+  viewBox 半寬 41.3u / 32.9u 與舊檔一致）與 `app/sesamecode-standalone.html`。
+- 對照圖 `docs/svg-whitespace-before-after.png`：上排修正前（三種外形都是空白）、下排修正後。
+- README：API 註解改為輪廓 `<path>`（不再是 `<textPath>`）、留白列補 SVG viewBox 說明、
+  標示墊 4.2u → 4.9u、style 測試 42 → 47、新增 SVG 導出比對一列。
+- 注意：PR #7（×64 換算派）已被 #8 revert；本輪改用「viewBox 直接採 u」的作法，程式更短且與 `renderCode` 同尺度。
 
 ## 第十一輪（相機凍結，使用者 1 點）
 「完全掃描頁」的「掃描效果」開啟時，掃到芝碼要**暫時凍結相機畫面**，動畫完成後（**不用按「再掃一次」**）

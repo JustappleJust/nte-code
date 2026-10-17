@@ -115,12 +115,31 @@ console.log('\n=== 4b. 圓形底盤（外形 = circle） ===');
   if (SAVE) fs.writeFileSync(`${OUT}/style_circle.png`, encodePNG(img.data, img.width, img.height));
 }
 {
+  const R6 = S.frameOuter(geom.rings);
+  const vbOf = (s) => s.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number);
   const sq = S.toSVG(geom, { px: 256 });
   const ci = S.toSVG(geom, { px: 256, shape: 'circle', bgRGB: [240, 240, 235], marginU: 3 });
   check('SVG 方形不含 clipPath、圓形含圓形 clipPath',
     !/clipPath/.test(sq) && /<clipPath id="plate"><circle/.test(ci) && /clip-path="url\(#plate\)"/.test(ci));
   const m = ci.match(/<clipPath id="plate"><circle[^>]*r="([\d.]+)"/);
-  check('SVG 底盤半徑正確', m && Math.abs(+m[1] - (S.frameOuter(geom.rings) + 3) * 64) < 0.01, m && m[1]);
+  check('SVG 底盤半徑正確（單位 u，不再放大 64 倍）',
+    m && Math.abs(+m[1] - (R6 + 3)) < 0.01, m && m[1]);
+  const vs = vbOf(sq), vc = vbOf(ci);
+  check('SVG 方形 viewBox 緊貼內容（半寬 = 外框 + 留白 2u）',
+    Math.abs(vs[2] / 2 - (R6 + 2)) < 0.001 && Math.abs(vs[0] + vs[2] / 2) < 0.001,
+    `viewBox ${vs.join(' ')}、預期半寬 ${(R6 + 2).toFixed(2)}`);
+  check('SVG 圓形 viewBox 僅多 0.5u 透明外距',
+    Math.abs(vc[2] / 2 - (R6 + 3.5)) < 0.001, `viewBox ${vc.join(' ')}、預期半寬 ${(R6 + 3.5).toFixed(2)}`);
+  const img = S.renderCode(geom, { pxPerUnit: 10, marginU: 3, shape: 'circle' });
+  check('SVG 與 PNG 的畫布比例一致',
+    Math.abs(vc[2] / 2 - img.width / 2 / 10) < 0.001,
+    `${(vc[2] / 2).toFixed(2)}u vs ${(img.width / 2 / 10).toFixed(2)}u`);
+  const lb = S.toSVG(geom, { px: 256, shape: 'label', marginU: 2, ringText: 'NTE · BAGEL' });
+  const vl = vbOf(lb);
+  check('SVG 圓形-標示 viewBox 保留文字環外距',
+    Math.abs(vl[2] / 2 - (R6 + 2 + 4.9)) < 0.001, `viewBox ${vl.join(' ')}`);
+  check('SVG 內容不會只佔畫布一小角（回歸：曾放大 32 倍）',
+    vl[2] / 2 < (R6 + 2 + 4.9) * 1.01 && vs[2] / 2 < (R6 + 2) * 1.01);
 }
 
 console.log('\n=== 5. 對比度檢查（WCAG） ===');

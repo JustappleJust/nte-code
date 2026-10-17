@@ -1959,33 +1959,27 @@
     const circleShape = o.shape === 'circle' || labelShape;
     const padU = labelShape ? (o.padU == null ? 4.9 : o.padU)
       : (circleShape ? (o.padU == null ? 0.5 : o.padU) : 0);
-    const S = R6 + margin + padU;                    // 內容半寬（u，與 renderCode 的 halfU 同義）
-    /* viewBox 每 1u 的單位數。所有圖形座標都必須先乘上這個倍率換算成
-       viewBox 單位；少了它，圖形會停留在 u 尺度（只有畫布的 1/64），
-       四周就出現巨大空白。放大而非用 1，是為了讓 toFixed(2~3) 仍保有解析度。 */
-    const UPX = 64;
-    const n = v => (+v).toFixed(3);                   // 數值已在 viewBox 單位（邊界、漸層、角度、不透明度）
-    const nu = v => (v * UPX).toFixed(3);             // u → viewBox（幾何座標與長度）
-    const n2 = v => (v * UPX).toFixed(2);             // u → viewBox（標示字形輪廓）
-    const px = (r, deg) => [r * Math.cos(deg * D2R), r * Math.sin(deg * D2R)];   // 回傳 u
-    // v2 = viewBox 邊長；S 是半寬，故邊長為 2·S·UPX（少了 ×2 會讓底盤倍於畫布、裁不到圓形）
-    const v2 = S * 2 * UPX;
+    const S = R6 + margin + padU;
+    const n = v => (+v).toFixed(3);
+    const n2 = v => (+v).toFixed(2);
+    const px = (r, deg) => [r * Math.cos(deg * D2R), r * Math.sin(deg * D2R)];
+    const v2 = S * 64;
 
-    /** 膠囊弧（含半圓端帽）的 SVG path；半徑與角度以 u 計 */
+    /** 膠囊弧（含半圓端帽）的 SVG path */
     const capArcPath = (rMid, a0, a1) => {
       const c = GEO.CAP_R, rO = rMid + c, rI = rMid - c;
       const sweep = Math.abs(a1 - a0);
       const large = sweep > 180 ? 1 : 0;
       const [x1, y1] = px(rO, a0), [x2, y2] = px(rO, a1);
       const [x3, y3] = px(rI, a1), [x4, y4] = px(rI, a0);
-      return `M${nu(x1)} ${nu(y1)}A${nu(rO)} ${nu(rO)} 0 ${large} 1 ${nu(x2)} ${nu(y2)}`
-        + `A${nu(c)} ${nu(c)} 0 0 1 ${nu(x3)} ${nu(y3)}`
-        + `A${nu(rI)} ${nu(rI)} 0 ${large} 0 ${nu(x4)} ${nu(y4)}`
-        + `A${nu(c)} ${nu(c)} 0 0 1 ${nu(x1)} ${nu(y1)}Z`;
+      return `M${n(x1)} ${n(y1)}A${n(rO)} ${n(rO)} 0 ${large} 1 ${n(x2)} ${n(y2)}`
+        + `A${n(c)} ${n(c)} 0 0 1 ${n(x3)} ${n(y3)}`
+        + `A${n(rI)} ${n(rI)} 0 ${large} 0 ${n(x4)} ${n(y4)}`
+        + `A${n(c)} ${n(c)} 0 0 1 ${n(x1)} ${n(y1)}Z`;
     };
     const annulusPath = (rO, rI) => {
-      return `M${nu(-rO)} 0A${nu(rO)} ${nu(rO)} 0 1 0 ${nu(rO)} 0A${nu(rO)} ${nu(rO)} 0 1 0 ${nu(-rO)} 0Z`
-        + `M${nu(-rI)} 0A${nu(rI)} ${nu(rI)} 0 1 1 ${nu(rI)} 0A${nu(rI)} ${nu(rI)} 0 1 1 ${nu(-rI)} 0Z`;
+      return `M${n(-rO)} 0A${n(rO)} ${n(rO)} 0 1 0 ${n(rO)} 0A${n(rO)} ${n(rO)} 0 1 0 ${n(-rO)} 0Z`
+        + `M${n(-rI)} 0A${n(rI)} ${n(rI)} 0 1 1 ${n(rI)} 0A${n(rI)} ${n(rI)} 0 1 1 ${n(-rI)} 0Z`;
     };
 
     /* ---- 樣式：純色 / 線性漸層 / 透明 ---- */
@@ -2035,14 +2029,14 @@
       if (!cell.state) continue;
       const [cx, cy] = px(cell.r, cell.deg);
       const ang = cell.deg + (cell.state - 1) * 45;
-      shapes.push(`<ellipse cx="${nu(cx)}" cy="${nu(cy)}" rx="${nu(GEO.SA)}" ry="${nu(GEO.SB)}" @INK@ transform="rotate(${n(ang)} ${nu(cx)} ${nu(cy)})"/>`);
+      shapes.push(`<ellipse cx="${n(cx)}" cy="${n(cy)}" rx="${n(GEO.SA)}" ry="${n(GEO.SB)}" @INK@ transform="rotate(${n(ang)} ${n(cx)} ${n(cy)})"/>`);
     }
     const cutout = !!(inkSpec && inkSpec.cutout);
     const body = shapes.map(sh => sh.replace('@INK@', inkPaint)).join('');
     const box = `${n(-v2 / 2)} ${n(-v2 / 2)} ${n(v2)} ${n(v2)}`;
     // 圓形底盤：以 clipPath 把底盤裁成圓（圓外透明）
     const circle = o.shape === 'circle';
-    const plateR = (o.plateU == null ? (R6 + margin) : o.plateU) * UPX;   // u → viewBox
+    const plateR = (o.plateU == null ? (R6 + margin) : o.plateU) * 64;   // 64 = viewBox 每 u 的單位數
     let plateAttr = '';
     if (circle) {
       defs.push(`<clipPath id="plate"><circle cx="0" cy="0" r="${n(plateR)}"/></clipPath>`);
@@ -2069,8 +2063,8 @@
         let d = '';
         for (const g of geo.glyphs) {
           for (const c of g.contours) {
-            const np = c.length >> 1;            // 點數（不要陰影到座標格式化器 n）
-            for (let i = 0; i < np; i++) {
+            const n = c.length >> 1;
+            for (let i = 0; i < n; i++) {
               d += (i ? 'L' : 'M') + n2(c[i * 2]) + ' ' + n2(c[i * 2 + 1]);
             }
             d += 'Z';

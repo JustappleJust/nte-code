@@ -22,9 +22,9 @@
 # 範例芝碼
 
 - 芝碼編輯器頁面：
-![芝碼編輯器](docs/example-1.svg)
+![芝碼編輯器](docs/example-1.png)
 - 我的 Discord 伺服器：
-![我的 Discord 伺服器](docs/example-2.svg)
+![我的 Discord 伺服器](docs/example-2.png)
 
 ---
 

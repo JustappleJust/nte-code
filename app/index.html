@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>芝碼 SesameCode</title>
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<!-- 背景：純色 + 點陣 / 斜線 / 棋盤格貼片 + 散佈單字 -->
+<div class="fx" aria-hidden="true">
+  <span class="dots"></span>
+  <span class="hatch"></span>
+  <span class="chk chk1"></span>
+  <span class="chk chk2"></span>
+  <span class="wm wm1"></span>
+  <span class="wm wm2"></span>
+  <span class="wm wm3"></span>
+  <span class="wm wm4"></span>
+  <span class="sym sym1">⌗ ▨ ⌗ ▨ ⌗<br>○ ● ○ ● ○<br>▚▚ ▞▞ ▚▚</span>
+  <span class="sym sym2">▨ ⌗ ▨ ⌗ ▨<br>● ○ ● ○ ●<br>▞▞ ▚▚ ▞▞</span>
+</div>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#gen">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="19.2" fill="none" stroke="currentColor" stroke-width="4.4"
+                pathLength="360" stroke-dasharray="55 5" transform="rotate(-108 24 24)"/>
+        <circle cx="24" cy="24" r="8.8" fill="none" stroke="currentColor" stroke-width="4.4"/>
+      </svg>
+      <h1 data-i18n="brand.cn"></h1>
+    </a>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="gen" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.4"/><path d="M12 3.4a8.6 8.6 0 0 1 7.4 4.2" stroke-width="2.8"/></svg>
+        <span data-i18n="nav.gen"></span></button>
+      <button class="tab" data-tab="scan" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5"/><circle cx="12" cy="12" r="3.6"/></svg>
+        <span data-i18n="nav.scan"></span></button>
+      <button class="tab" data-tab="spec" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4.5" y="3" width="15" height="18"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+        <span data-i18n="nav.spec"></span></button>
+    </nav>
+    <div class="tools">
+      <div class="sel sel-mini" data-for="lang"></div>
+      <select id="lang" hidden></select>
+      <button id="btn-theme" class="icon" aria-label="theme" data-i18n-title="theme.toggle">
+        <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4 17 7M7 17l-1.6 1.6"/></svg>
+        <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="band"><div class="band-in"><span data-i18n="band"></span></div></div>
+</header>
+
+<div class="app">
+  <main>
+    <!-- ============================ 產生器 ============================ -->
+    <section id="tab-gen" class="panel active">
+      <div class="gen-grid">
+        <section class="stagewrap">
+          <div class="stage">
+            <div class="box-h"><h2 data-i18n="gen.preview"></h2><span class="h-en">Preview</span><span class="sp"></span></div>
+            <div class="plate" id="stage">
+              <canvas id="canvas" width="512" height="512"></canvas>
+              <div class="stage-load" id="stage-load" aria-hidden="true"><span class="bar"></span><span class="txt" data-i18n="stage.working"></span></div>
+            </div>
+            <div class="readout" id="readout"></div>
+          </div>
+
+          <div class="stage" style="margin-top:12px">
+            <div class="box-h"><h2 data-i18n="gen.output"></h2><span class="h-en">Export</span><span class="sp"></span></div>
+            <div class="outbar">
+
+              <button id="btn-png" class="primary exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i18n="gen.png"></span></button>
+              <button id="btn-svg" class="exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i18n="gen.svg"></span></button>
+              <button id="btn-self" class="ghost"><span data-i18n="gen.self"></span></button>
+            </div>
+            <div id="dense-hint" class="msg warn hidden" style="margin:0;padding:0 12px 10px"></div>
+            <div id="self-msg" class="msg" aria-live="polite" style="margin:0;padding:0 12px 10px"></div>
+          </div>
+        </section>
+
+        <section class="ctrl">
+          <!-- 基本 -->
+          <div class="box">
+            <div class="box-h"><h2 data-i18n="gen.basic"></h2><span class="h-en">Content</span><span class="sp"></span><span class="cap" id="cap-info"></span></div>
+            <div class="box-b">
+              <div class="head-row">
+                <div class="seg" id="mode-seg" role="tablist">
+                  <button class="segbtn active" data-mode="text"><span data-i18n="gen.mode.text"></span></button>
+                  <button class="segbtn" data-mode="hex"><span data-i18n="gen.mode.hex"></span></button>
+                  <input type="radio" name="mode" value="text" checked hidden><input type="radio" name="mode" value="hex" hidden>
+                </div>
+              </div>
+              <textarea id="payload" rows="3" data-i18n-ph="gen.placeholder" spellcheck="false">Hello, NTE.</textarea>
+              <div class="ex" id="examples"></div>
+              <div class="fields">
+                <label><span data-i18n="gen.size"></span><span class="sel" data-for="size"></span></label>
+              </div>
+              <select id="size" hidden>
+                <option value="640" data-i18n="gen.size.s"></option>
+                <option value="1024" selected data-i18n="gen.size.m"></option>
+                <option value="2048" data-i18n="gen.size.l"></option>
+                <option value="custom" data-i18n="gen.size.custom"></option>
+              </select>
+              <div class="srow hidden" id="size-custom-row">
+                <label class="rng"><span data-i18n="gen.size.px"></span><input type="range" id="size-custom" min="256" max="4096" step="64" value="1024"><span class="val" id="size-custom-val">1024</span></label>
+              </div>
+              <button id="btn-gen" class="primary wide"><span data-i18n="gen.btn"></span><kbd>⌘↵</kbd></button>
+              <div id="gen-msg" class="msg" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <!-- 容錯與圈數（常駐，不收合） -->
+          <div class="box">
+            <div class="box-h"><h2 data-i18n="gen.advanced"></h2><span class="h-en">Detail</span><span class="sp"></span></div>
+            <div class="box-b">
+              <div class="fields">
+                <label><span data-i18n="gen.ec"></span><span class="sel" data-for="ec"></span></label>
+                <label><span data-i18n="gen.rings"></span><span class="sel" data-for="version"></span></label>
+              </div>
+              <select id="ec" hidden>
+                <option value="0" data-i18n="gen.ec.l"></option>
+                <option value="1" selected data-i18n="gen.ec.m"></option>
+                <option value="2" data-i18n="gen.ec.q"></option>
+                <option value="3" data-i18n="gen.ec.h"></option>
+              </select>
+              <select id="version" hidden><option value="0" data-i18n="gen.rings.auto"></option></select>
+              <label class="rng" style="margin-top:6px"><span data-i18n="style.margin"></span><input type="range" id="margin" min="0" max="8" step="0.5" value="2"><span class="val" id="margin-val">2u</span></label>
+              <div id="adv-info" class="cap" style="margin-top:9px"></div>
+            </div>
+          </div>
+
+          <!-- 外觀 -->
+          <div class="box" id="appear-card">
+            <div class="box-h"><h2 data-i18n="gen.appear"></h2><span class="h-en">Looks</span><span class="sp"></span></div>
+            <div class="box-b">
+              <div class="sub-h"><span data-i18n="style.shape"></span></div>
+              <div class="shapes" id="shape-chips" role="radiogroup">
+                <button class="shape-btn" data-shape="square" role="radio">
+                  <svg class="pv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4.2" y="4.2" width="15.6" height="15.6"/></svg>
+                  <span data-i18n="style.square"></span></button>
+                <button class="shape-btn active" data-shape="circle" role="radio">
+                  <svg class="pv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8.2"/></svg>
+                  <span data-i18n="style.circle"></span></button>
+                <button class="shape-btn" data-shape="label" role="radio">
+                  <svg class="pv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+                    <circle cx="12" cy="9" r="5.2"/>
+                    <path d="M17.14 15.13A8 8 0 0 1 6.86 15.13"/>
+                  </svg>
+                  <span data-i18n="style.label"></span></button>
+              </div>
+              <select id="shape" hidden>
+                <option value="square" data-i18n="style.square"></option>
+                <option value="circle" selected data-i18n="style.circle"></option>
+                <option value="label" data-i18n="style.label"></option>
+              </select>
+
+              <div class="sub-h"><span data-i18n="style.preset"></span></div>
+              <div class="presets" id="presets"></div>
+
+              <div class="sub-h"><span data-i18n="style.custom"></span></div>
+              <div class="srow">
+                <div class="seg seg-sm" id="ink-grad-seg">
+                  <button class="segbtn active" data-grad="ink" data-on="0"><span data-i18n="style.solid"></span></button>
+                  <button class="segbtn" data-grad="ink" data-on="1"><span data-i18n="style.gradShort"></span></button>
+                </div>
+                <span class="cap" data-i18n="style.ink"></span>
+                <label><input type="color" id="ink-color" value="#111111"></label>
+                <label class="hidden" id="ink-color2-wrap"><input type="color" id="ink-color2" value="#7b5cff"></label>
+                <input type="checkbox" id="ink-grad" hidden>
+              </div>
+              <div class="srow hidden" id="ink-angle-row">
+                <label class="rng"><span data-i18n="style.angle"></span><input type="range" id="ink-angle" min="0" max="360" step="15" value="45"><span class="val" id="ink-angle-val">45°</span></label>
+              </div>
+              <div class="srow">
+                <div class="seg seg-sm" id="bg-grad-seg">
+                  <button class="segbtn active" data-grad="bg" data-on="0"><span data-i18n="style.solid"></span></button>
+                  <button class="segbtn" data-grad="bg" data-on="1"><span data-i18n="style.gradShort"></span></button>
+                </div>
+                <span class="cap" data-i18n="style.bg"></span>
+                <label><input type="color" id="bg-color" value="#ffffff"></label>
+                <label class="hidden" id="bg-color2-wrap"><input type="color" id="bg-color2" value="#241a3f"></label>
+                <input type="checkbox" id="bg-grad" hidden>
+              </div>
+              <div class="srow hidden" id="bg-angle-row">
+                <label class="rng"><span data-i18n="style.angle"></span><input type="range" id="bg-angle" min="0" max="360" step="15" value="90"><span class="val" id="bg-angle-val">90°</span></label>
+              </div>
+              <div class="srow">
+                <label class="rng"><span data-i18n="style.opacity"></span><input type="range" id="ink-alpha" min="0" max="100" value="100"><span class="val" id="ink-alpha-val">100%</span></label>
+              </div>
+              <div class="srow">
+                <label class="rng"><span data-i18n="style.opacityBg"></span><input type="range" id="bg-alpha" min="0" max="100" value="100"><span class="val" id="bg-alpha-val">100%</span></label>
+              </div>
+              <div class="srow">
+                <label class="inline"><input type="checkbox" id="ink-cutout"><span data-i18n="style.cutout"></span></label>
+                <span class="sp"></span>
+                <button id="btn-swap" class="ghost"><span data-i18n="style.swap"></span></button>
+                <button id="btn-invert" class="ghost"><span data-i18n="style.invert"></span></button>
+                <button id="btn-reset-style" class="ghost"><span data-i18n="style.reset"></span></button>
+              </div>
+              <div class="contrast" id="contrast"></div>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="box-h"><h2 data-i18n="gen.recent"></h2><span class="h-en">Recent</span><span class="sp"></span></div>
+            <div class="box-b"><div class="recent" id="recent"></div></div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ============================ 掃描器 ============================ -->
+    <section id="tab-scan" class="panel">
+      <div class="scan-grid">
+        <div class="cam-col">
+          <div class="box">
+            <div class="box-h"><h2 data-i18n="scan.title"></h2><span class="h-en">Scanner</span>
+              <span class="sp"></span>
+              <a class="tag grey linkish" href="#fullscreen" data-fullscreen><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5"/></svg><span data-i18n="scan.fullscreen"></span></a>
+            </div>
+            <div class="box-b">
+              <div class="cam-wrap idle" id="cam-wrap">
+                <video id="video" playsinline autoplay muted></video>
+                <div class="guide" aria-hidden="true"></div>
+                <div class="hud hidden" id="hud">
+                  <span class="tag grey" id="hud-res">—</span>
+                  <span class="tag grey" id="hud-fps">—</span>
+                  <span class="tag" id="hud-lock"></span>
+                </div>
+                <div class="cam-idle" id="cam-idle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><path d="M3 3l18 18"/></svg>
+                  <b data-i18n="scan.idle.t"></b>
+                  <span data-i18n="scan.idle"></span>
+                </div>
+                <div id="flash" class="flash"></div>
+              </div>
+              <div class="scan-actions">
+                <button id="btn-cam" class="primary"><span data-i18n="scan.cam.on"></span></button>
+                <button id="btn-stop" class="hidden" disabled><span data-i18n="scan.cam.off"></span></button>
+                <span class="sp"></span>
+                <label class="inline hidden" id="cam-dev-wrap" style="gap:8px"><span data-i18n="scan.cam.device"></span><span class="sel sel-mini" data-for="cam-dev"></span><select id="cam-dev" hidden></select></label>
+              </div>
+              <div id="scan-progress" class="progress"><span></span></div>
+              <div id="scan-msg" class="msg" aria-live="polite"></div>
+              <div class="reqbox">
+                <span class="req-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg></span>
+                <span data-i18n="scan.req.value"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="box">
+            <div class="box-h"><h2 data-i18n="scan.result"></h2><span class="h-en">Result</span><span class="sp"></span></div>
+            <div class="box-b">
+              <div id="result" class="result empty" data-i18n="scan.empty"></div>
+              <div class="srow" id="result-actions">
+                <button id="btn-open" class="primary hidden"><span data-i18n="scan.open"></span></button>
+                <button id="btn-copy" disabled><span data-i18n="scan.copy"></span></button>
+                <button id="btn-share" class="ghost hidden"><span data-i18n="scan.share"></span></button>
+                <button id="btn-clear" class="ghost"><span data-i18n="scan.clear"></span></button>
+              </div>
+              <div class="drop" id="drop">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 4v11m0-11 4 4m-4-4-4 4M4 19h16"/></svg>
+                <span data-i18n="scan.drop"></span>
+              </div>
+              <div class="srow">
+                <label class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h4l1.6 2h7.4A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/></svg><span data-i18n="scan.file"></span>
+                  <input type="file" id="file" accept="image/*">
+                </label>
+                <button id="btn-paste" class="ghost"><span data-i18n="scan.paste"></span></button>
+              </div>
+              <div class="sub-h"><span data-i18n="scan.history"></span></div>
+              <ul id="history" class="history"></ul>
+              <div class="sub-h"><span data-i18n="scan.tune"></span></div>
+              <div class="srow">
+                <label class="rng" style="flex:1 1 150px"><span data-i18n="scan.thr"></span><input type="range" id="thr" min="6" max="24" value="13"><span class="val" id="thr-val">13</span></label>
+                <label style="flex:0 0 auto"><span data-i18n="scan.maxdim"></span><span class="sel sel-mini" data-for="maxdim"></span></label>
+                <select id="maxdim" hidden>
+                  <option value="1280" selected data-i18n="scan.maxdim.1280"></option>
+                  <option value="1600" data-i18n="scan.maxdim.1600"></option>
+                  <option value="2048" data-i18n="scan.maxdim.2048"></option>
+                </select>
+              </div>
+              <pre id="dbg" class="cap" style="margin-top:10px;white-space:pre-wrap"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ 說明 ============================ -->
+    <section id="tab-spec" class="panel">
+      <div class="spec-grid">
+        <aside class="toc box">
+          <div class="box-h"><h2 data-i18n="spec.toc"></h2><span class="h-en">Contents</span></div>
+          <ol id="toc-list"></ol>
+        </aside>
+        <div class="box">
+          <div class="box-h"><h2 data-i18n="spec.title"></h2><span class="h-en">How it works</span><span class="sp"></span></div>
+          <div class="box-b prose">
+            <div id="spec-body"></div>
+            <div class="tablewrap"><div id="spec-table"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ========================= 全螢幕掃描器 ========================= -->
+<section id="fullscreen" class="fs" aria-hidden="true">
+  <div class="fs-band"><div class="band-in"><span data-i18n="band"></span></div></div>
+  <div class="fs-stage">
+    <div class="fs-cam">
+      <video id="fs-video" playsinline autoplay muted></video>
+      <div class="fs-guide" aria-hidden="true"></div>
+      <div class="fs-hint" data-i18n="fs.hint"></div>
+      <div class="fs-flash" id="fs-flash"></div>
+      <div class="fs-top">
+        <button class="fs-close" id="fs-close" aria-label="close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <span class="tag" id="fs-status" data-i18n="fs.status"></span>
+      </div>
+      <div class="fs-result" id="fs-result" hidden>
+        <div class="fs-payload" id="fs-payload"></div>
+        <div class="fs-actions">
+          <button id="fs-open" class="primary hidden"><span data-i18n="scan.open"></span></button>
+          <button id="fs-copy"><span data-i18n="scan.copy"></span></button>
+          <button id="fs-share" class="ghost hidden"><span data-i18n="scan.share"></span></button>
+          <button id="fs-again" class="ghost"><span data-i18n="fs.again"></span></button>
+        </div>
+      </div>
+    </div>
+    <div class="fs-foot">
+      <label class="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h4l1.6 2h7.4A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"/></svg><span data-i18n="scan.file"></span>
+        <input type="file" id="fs-file" accept="image/*">
+      </label>
+      <button id="fs-cam-toggle"><span data-i18n="fs.camToggle"></span></button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="band alt"><div class="band-in"><span data-i18n="band"></span></div></div>
+  <div class="foot-in">
+    <div>
+      <div class="foot-mark">SesameCode</div>
+      <div class="foot-lead" data-i18n-html="footer"></div>
+      <div class="foot-note" data-i18n="footer.fine"></div>
+      <div class="foot-note"><span data-i18n="disclaimer.body"></span></div>
+    </div>
+  </div>
+</footer>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="./i18n.js"></script>
+<script src="../src/sesame-core.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

@@ -15,10 +15,16 @@ const core = fs.readFileSync(path.join(ROOT, 'src', 'sesame-core.js'), 'utf8');
 const i18n = fs.readFileSync(path.join(APP, 'i18n.js'), 'utf8');
 const app = fs.readFileSync(path.join(APP, 'app.js'), 'utf8');
 
-html = html.replace('<link rel="stylesheet" href="./style.css">', `<style>\n${css}\n</style>`);
-html = html.replace('<script src="./i18n.js"></script>', `<script>\n${i18n}\n</script>`);
-html = html.replace('<script src="../src/sesame-core.js"></script>', `<script>\n${core}\n</script>`);
-html = html.replace('<script src="./app.js"></script>', `<script>\n${app}\n</script>`);
+/* 資源標籤帶有 `?v=<build>`（快取破除）。這裡用 regex 吃掉查詢字串，
+   避免改了 index.html 的版本號就讓單檔打包靜默失效。 */
+const swap = (re, replacement, label) => {
+  if (!re.test(html)) throw new Error(`build-single: 找不到 ${label} 的標籤，請同步更新 build-single.mjs`);
+  html = html.replace(re, replacement);
+};
+swap(/<link rel="stylesheet" href="\.\/style\.css(?:\?v=[^"]*)?">/, `<style>\n${css}\n</style>`, 'style.css');
+swap(/<script src="\.\/i18n\.js(?:\?v=[^"]*)?"><\/script>/, `<script>\n${i18n}\n</script>`, 'i18n.js');
+swap(/<script src="\.\.\/src\/sesame-core\.js(?:\?v=[^"]*)?"><\/script>/, `<script>\n${core}\n</script>`, 'sesame-core.js');
+swap(/<script src="\.\/app\.js(?:\?v=[^"]*)?"><\/script>/, `<script>\n${app}\n</script>`, 'app.js');
 html = html.replace('<title>芝碼 SesameCode</title>',
   '<title>芝碼 SesameCode</title>\n<!-- 由 app/build-single.mjs 產生：請勿直接編輯 -->');
 // 內嵌 favicon（避免 file:// 開啟時 404）

@@ -1961,9 +1961,12 @@
       : (circleShape ? (o.padU == null ? 0.5 : o.padU) : 0);
     const S = R6 + margin + padU;
     const n = v => (+v).toFixed(3);
-    const n2 = v => (+v).toFixed(2);
+    // 標示字形輪廓用較多小數：viewBox 以 u 為單位，0.0001u 在 4K 導出下仍遠小於 1 像素
+    const n2 = v => (+v).toFixed(4);
     const px = (r, deg) => [r * Math.cos(deg * D2R), r * Math.sin(deg * D2R)];
-    const v2 = S * 64;
+    // viewBox 與所有路徑座標都使用「單位 u」；v2 是畫布的「全寬」（2 × 半寬），
+    // 不可再乘上縮放係數，否則內容只佔畫布的 1/32，導出後會出現巨大留白。
+    const v2 = 2 * S;
 
     /** 膠囊弧（含半圓端帽）的 SVG path */
     const capArcPath = (rMid, a0, a1) => {
@@ -2036,7 +2039,7 @@
     const box = `${n(-v2 / 2)} ${n(-v2 / 2)} ${n(v2)} ${n(v2)}`;
     // 圓形底盤：以 clipPath 把底盤裁成圓（圓外透明）
     const circle = o.shape === 'circle';
-    const plateR = (o.plateU == null ? (R6 + margin) : o.plateU) * 64;   // 64 = viewBox 每 u 的單位數
+    const plateR = (o.plateU == null ? (R6 + margin) : o.plateU);   // 單位 u（與 viewBox 相同座標系）
     let plateAttr = '';
     if (circle) {
       defs.push(`<clipPath id="plate"><circle cx="0" cy="0" r="${n(plateR)}"/></clipPath>`);

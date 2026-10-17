@@ -1803,6 +1803,17 @@
     if (lastGeom) generate();
   });
 
+  /* ---------------------------------------------------- 建置標記
+   * 頁面的 data-build 與各資源的 ?v= 一起更新（見 app/index.html）。
+   * 用途：合併後若還看到舊畫面，看頁尾這行就能判斷瀏覽器是不是還在跑舊檔；
+   * 舊分頁會把 JS 留在記憶體裡，必須重新整理（Pages 對 HTML/JS 另有 10 分鐘快取）。 */
+  const BUILD = document.documentElement.getAttribute('data-build') || '';
+  if (BUILD) {
+    const bn = $('build-note');
+    if (bn) bn.textContent = 'build ' + BUILD;
+    if (window.console && console.info) console.info('[SesameCode] build ' + BUILD);
+  }
+
   /* ---------------------------------------------------- 初始化 */
   document.querySelectorAll('.sel').forEach(initSel);
   I18N.apply();

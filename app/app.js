@@ -495,29 +495,69 @@
     updateCapacity();
   }
 
+  /* 觸發檔案下載：一定用 Blob URL（不要用 data:）。
+   * Chrome / 預覽 iframe 會忽略 <a download> 配上過長的 data: URL，
+   * 接著又禁止導向 data:，結果「導出 PNG」看起來完全沒反應。 */
+  function saveBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+  }
+  function dataUrlToBlob(dataUrl) {
+    const i = dataUrl.indexOf(',');
+    if (i < 0) throw new Error('data-url');
+    const mime = (dataUrl.slice(0, i).match(/data:([^;,]+)/) || [, 'application/octet-stream'])[1];
+    const bin = atob(dataUrl.slice(i + 1));
+    const u8 = new Uint8Array(bin.length);
+    for (let j = 0; j < bin.length; j++) u8[j] = bin.charCodeAt(j);
+    return new Blob([u8], { type: mime });
+  }
+  function pngBlobFromRgba(rgba, w, h) {
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d');
+      if (ctx && w > 0 && h > 0) {
+        let id;
+        try { id = new ImageData(rgba, w, h); }
+        catch (e) { id = ctx.createImageData(w, h); id.data.set(rgba); }
+        ctx.putImageData(id, 0, 0);
+        const du = cv.toDataURL('image/png');
+        if (du && du.indexOf('base64,') > 0 && du.length > 64) return dataUrlToBlob(du);
+      }
+    } catch (e) { /* canvas 路徑失敗就改走純 JS 編碼 */ }
+    return new Blob([S.encodePNG(rgba, w, h)], { type: 'image/png' });
+  }
+
   function download(kind) {
     if (!lastGeom) { $('gen-msg').className = 'msg err'; $('gen-msg').textContent = t('gen.needGenerate'); return; }
     const st = styleState();
     const o = styleOpts(st);
     const name = `sesamecode-${lastGeom.rings}r-${lastGeom.ecKey}-${st.shape}`;
     const target = +$('size').value || +$('size-custom').value;
-    if (kind === 'svg') {
-      const svg = S.toSVG(lastGeom, Object.assign({ px: target }, o));
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-      a.download = name + '.svg'; a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    } else {
-      const cv = document.createElement('canvas');
-      const img = S.renderCode(lastGeom, Object.assign({ pxPerUnit: target / (2 * S.frameOuter(lastGeom.rings)) }, o));
-      cv.width = img.width; cv.height = img.height;
-      cv.getContext('2d').putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
-      const a = document.createElement('a');
-      a.href = cv.toDataURL('image/png'); a.download = name + '.png'; a.click();
+    try {
+      if (kind === 'svg') {
+        const svg = S.toSVG(lastGeom, Object.assign({ px: target }, o));
+        saveBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), name + '.svg');
+      } else {
+        const img = S.renderCode(lastGeom, Object.assign({ pxPerUnit: target / (2 * S.frameOuter(lastGeom.rings)) }, o));
+        saveBlob(pngBlobFromRgba(img.data, img.width, img.height), name + '.png');
+      }
+      $('gen-msg').className = 'msg ok';
+      $('gen-msg').textContent = t('msg.downloaded', { fmt: kind.toUpperCase() });
+      toast(t('toast.saved', { fmt: kind.toUpperCase(), name: name + '.' + kind }), 'ok', t('gen.preview'));
+    } catch (err) {
+      const msg = t('msg.downloadFail', { err: (err && err.message) ? err.message : String(err) });
+      $('gen-msg').className = 'msg err';
+      $('gen-msg').textContent = msg;
+      toast(msg, 'err', t('gen.output'));
     }
-    $('gen-msg').className = 'msg ok';
-    $('gen-msg').textContent = t('msg.downloaded', { fmt: kind.toUpperCase() });
-    toast(t('toast.saved', { fmt: kind.toUpperCase(), name: name + '.' + kind }), 'ok', t('gen.preview'));
   }
 
   /* 範例 payload */

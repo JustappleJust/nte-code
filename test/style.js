@@ -165,6 +165,30 @@ console.log('\n=== 7. 預設外觀不受影響 ===');
   check('預設 alpha 全為 255', c[3] === 255 && d[3] === 255);
 }
 
+console.log('\n=== 8. encodePNG（導出用 RGBA） ===');
+{
+  const w = 3, h = 2;
+  const rgba = new Uint8ClampedArray([
+    255, 0, 0, 255,  0, 255, 0, 128,  0, 0, 255, 0,
+    10, 20, 30, 40,  50, 60, 70, 80,  90, 100, 110, 120
+  ]);
+  const png = S.encodePNG(rgba, w, h);
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  check('PNG 檔頭', sig.every((b, i) => png[i] === b), `len=${png.length}`);
+  const ihdrLen = (png[8] << 24) | (png[9] << 16) | (png[10] << 8) | png[11];
+  const ihdrType = String.fromCharCode(png[12], png[13], png[14], png[15]);
+  const ihdrW = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+  const ihdrH = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+  check('IHDR RGBA 8-bit', ihdrLen === 13 && ihdrType === 'IHDR' && ihdrW === w && ihdrH === h && png[24] === 8 && png[25] === 6);
+  let threw = false;
+  try { S.encodePNG(rgba, 0, 1); } catch (e) { threw = true; }
+  check('拒絕無效尺寸', threw);
+  const img = S.renderCode(geom, { pxPerUnit: 4, shape: 'circle', bgStyle: { from: [255, 255, 255], alpha: 0 }, inkRGB: [20, 20, 20] });
+  const out = S.encodePNG(img.data, img.width, img.height);
+  check('圓形透明芝碼可編碼', out.length > 100 && out[0] === 0x89 && out[out.length - 8] === 'I'.charCodeAt(0));
+  if (SAVE) fs.writeFileSync(`${OUT}/style_encodepng.png`, Buffer.from(out));
+}
+
 console.log(`\n=== 結果：${pass} 通過 / ${fail} 失敗 ===`);
 if (failures.length) { console.log('失敗項目:'); failures.forEach(f => console.log(' - ' + f)); }
 process.exit(fail ? 1 : 0);

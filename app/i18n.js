@@ -1438,6 +1438,10 @@
   dict['zh-Hans']['footer.fine'] = '离线可用 · 不上传数据 · 自由使用';
   dict['en']['footer.fine'] = 'Works offline · nothing uploaded · free to use';
   dict['ja']['footer.fine'] = 'オフラインで使える · アップロードなし · 自由に使える';
+  dict['zh-Hant']['msg.downloadFail'] = '導出失敗：{err}';
+  dict['zh-Hans']['msg.downloadFail'] = '导出失败：{err}';
+  dict['en']['msg.downloadFail'] = 'Export failed: {err}';
+  dict['ja']['msg.downloadFail'] = '書き出しに失敗しました：{err}';
   // 色票名稱只留配色名（不寫出實際顏色）
   const PRESET_NAME = {
     'zh-Hant': { classic: '經典', nte: '異環', alert: '警報', sesame: '芝麻', matcha: '抹茶', midnight: '夜行', blueprint: '藍圖', rose: '玫瑰' },

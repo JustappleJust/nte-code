@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <title>芝碼 SesameCode</title>
+<!-- 由 app/build-single.mjs 產生：請勿直接編輯 -->
 <!-- Discord embed preview（Open Graph） -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="芝碼 SesameCode">
@@ -16,7 +17,6 @@
 <meta property="og:image:height" content="950">
 <meta property="og:image:alt" content="芝碼 SesameCode 產生器介面：預覽中的圓形芝麻碼與控制項">
 <meta property="og:locale" content="zh_TW">
-<!-- 由 app/build-single.mjs 產生：請勿直接編輯 -->
 <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMGIwZTEzIi8+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzNlYThmZiIgc3Ryb2tlLXdpZHRoPSI1IgogICAgICAgICAgcGF0aExlbmd0aD0iMzYwIiBzdHJva2UtZGFzaGFycmF5PSI1NSA1IiB0cmFuc2Zvcm09InJvdGF0ZSgtMTA4IDMyIDMyKSIvPgogIDxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjEwLjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YyZjRmNiIgc3Ryb2tlLXdpZHRoPSI1Ii8+Cjwvc3ZnPgo=" type="image/svg+xml">
 <style>
 /* ============================================================================
@@ -541,8 +541,8 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
             <div class="box-h"><h2 data-i18n="gen.output"></h2><span class="h-en">Export</span><span class="sp"></span></div>
             <div class="outbar">
 
-              <button id="btn-png" class="primary exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i18n="gen.png"></span></button>
-              <button id="btn-svg" class="exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i18n="gen.svg"></span></button>
+              <button type="button" id="btn-png" class="exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i18n="gen.png"></span></button>
+              <button type="button" id="btn-svg" class="exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span data-i18n="gen.svg"></span></button>
               <button id="btn-self" class="ghost"><span data-i18n="gen.self"></span></button>
             </div>
             <div id="dense-hint" class="msg warn hidden" style="margin:0;padding:0 12px 10px"></div>
@@ -2270,6 +2270,10 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   dict['zh-Hans']['footer.fine'] = '离线可用 · 不上传数据 · 自由使用';
   dict['en']['footer.fine'] = 'Works offline · nothing uploaded · free to use';
   dict['ja']['footer.fine'] = 'オフラインで使える · アップロードなし · 自由に使える';
+  dict['zh-Hant']['msg.downloadFail'] = '導出失敗：{err}';
+  dict['zh-Hans']['msg.downloadFail'] = '导出失败：{err}';
+  dict['en']['msg.downloadFail'] = 'Export failed: {err}';
+  dict['ja']['msg.downloadFail'] = '書き出しに失敗しました：{err}';
   // 色票名稱只留配色名（不寫出實際顏色）
   const PRESET_NAME = {
     'zh-Hant': { classic: '經典', nte: '異環', alert: '警報', sesame: '芝麻', matcha: '抹茶', midnight: '夜行', blueprint: '藍圖', rose: '玫瑰' },
@@ -4430,6 +4434,74 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}" width="${o.px || 512}" height="${o.px || 512}">${defsBlock}${bgRect}${cutout ? '' : body}${labelTextSvg}</svg>`;
   }
 
+  /* =============================================================== PNG
+   * 無依賴 RGBA 編碼（color type 6）。瀏覽器 toDataURL 在大圖／data: URL
+   * 下載時常被擋；這個輸出可直接做成 Blob 觸發下載，並保留透明通道。 */
+  function crc32(buf) {
+    let c = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) {
+      c ^= buf[i];
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    return (c ^ 0xffffffff) >>> 0;
+  }
+  function adler32(buf) {
+    let a = 1, b = 0;
+    for (let i = 0; i < buf.length; i++) { a = (a + buf[i]) % 65521; b = (b + a) % 65521; }
+    return ((b << 16) | a) >>> 0;
+  }
+  function u32be(n) {
+    return new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+  }
+  function concatU8(parts) {
+    let n = 0;
+    for (let i = 0; i < parts.length; i++) n += parts[i].length;
+    const o = new Uint8Array(n);
+    let p = 0;
+    for (let i = 0; i < parts.length; i++) { o.set(parts[i], p); p += parts[i].length; }
+    return o;
+  }
+  function pngChunk(type, data) {
+    const typ = new Uint8Array([type.charCodeAt(0), type.charCodeAt(1), type.charCodeAt(2), type.charCodeAt(3)]);
+    const td = concatU8([typ, data]);
+    return concatU8([u32be(data.length), td, u32be(crc32(td))]);
+  }
+  /** rgba: Uint8Array|Uint8ClampedArray (w*h*4) → PNG Uint8Array（RGBA，保留 alpha） */
+  function encodePNG(rgba, w, h) {
+    w = w | 0; h = h | 0;
+    if (w <= 0 || h <= 0) throw new Error('encodePNG: 尺寸無效');
+    const stride = 1 + w * 4;
+    const raw = new Uint8Array(h * stride);
+    for (let y = 0; y < h; y++) {
+      raw[y * stride] = 0;
+      const src = y * w * 4;
+      raw.set(rgba.subarray(src, src + w * 4), y * stride + 1);
+    }
+    const zparts = [new Uint8Array([0x78, 0x01])];
+    let off = 0;
+    while (off < raw.length) {
+      const len = Math.min(65535, raw.length - off);
+      const last = (off + len >= raw.length) ? 1 : 0;
+      const hdr = new Uint8Array(5);
+      hdr[0] = last;
+      hdr[1] = len & 255; hdr[2] = (len >>> 8) & 255;
+      hdr[3] = (~len) & 255; hdr[4] = ((~len) >>> 8) & 255;
+      zparts.push(hdr, raw.subarray(off, off + len));
+      off += len;
+    }
+    zparts.push(u32be(adler32(raw)));
+    const ihdr = new Uint8Array(13);
+    ihdr.set(u32be(w), 0);
+    ihdr.set(u32be(h), 4);
+    ihdr[8] = 8; ihdr[9] = 6;
+    return concatU8([
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      pngChunk('IHDR', ihdr),
+      pngChunk('IDAT', concatU8(zparts)),
+      pngChunk('IEND', new Uint8Array(0))
+    ]);
+  }
+
   /* ------------------------------------------------------------ 輸出 API */
   return {
     GEO, EC_LEVELS, PARAM,
@@ -4438,7 +4510,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     capacityBytes, packCost, digitsForBytes, packBytes, unpackBytes,
     rsEncode, rsDecode, rsGenPoly,
     headerEncode, headerDecode, ecPlan, wrapVersion,
-    encode, decodeImage, renderCode, toSVG, utf8Decode, utf8Encode, toU8, trimZeros,
+    encode, decodeImage, renderCode, toSVG, encodePNG, utf8Decode, utf8Encode, toU8, trimZeros,
     contrastRatio, relLum, styleContrast, styleStops, styleAlpha, rgbHex,
     _internal: { toGray, downscale, binarize, labelComponents, pickCandidates, envelope, fitRing, solveN, refineAffine, makeMapper, makeAffineMapper, makeHomographyMapper, mapperToH, invert3, mul3, boundaryProfiles, findBoundaryGap, fitHomographyFromProfiles, cyclicRuns, collectPixels, tryHypothesis, headerDecode, capacityBytes }
   };
@@ -4943,29 +5015,69 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     updateCapacity();
   }
 
+  /* 觸發檔案下載：一定用 Blob URL（不要用 data:）。
+   * Chrome / 預覽 iframe 會忽略 <a download> 配上過長的 data: URL，
+   * 接著又禁止導向 data:，結果「導出 PNG」看起來完全沒反應。 */
+  function saveBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+  }
+  function dataUrlToBlob(dataUrl) {
+    const i = dataUrl.indexOf(',');
+    if (i < 0) throw new Error('data-url');
+    const mime = (dataUrl.slice(0, i).match(/data:([^;,]+)/) || [, 'application/octet-stream'])[1];
+    const bin = atob(dataUrl.slice(i + 1));
+    const u8 = new Uint8Array(bin.length);
+    for (let j = 0; j < bin.length; j++) u8[j] = bin.charCodeAt(j);
+    return new Blob([u8], { type: mime });
+  }
+  function pngBlobFromRgba(rgba, w, h) {
+    try {
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d');
+      if (ctx && w > 0 && h > 0) {
+        let id;
+        try { id = new ImageData(rgba, w, h); }
+        catch (e) { id = ctx.createImageData(w, h); id.data.set(rgba); }
+        ctx.putImageData(id, 0, 0);
+        const du = cv.toDataURL('image/png');
+        if (du && du.indexOf('base64,') > 0 && du.length > 64) return dataUrlToBlob(du);
+      }
+    } catch (e) { /* canvas 路徑失敗就改走純 JS 編碼 */ }
+    return new Blob([S.encodePNG(rgba, w, h)], { type: 'image/png' });
+  }
+
   function download(kind) {
     if (!lastGeom) { $('gen-msg').className = 'msg err'; $('gen-msg').textContent = t('gen.needGenerate'); return; }
     const st = styleState();
     const o = styleOpts(st);
     const name = `sesamecode-${lastGeom.rings}r-${lastGeom.ecKey}-${st.shape}`;
     const target = +$('size').value || +$('size-custom').value;
-    if (kind === 'svg') {
-      const svg = S.toSVG(lastGeom, Object.assign({ px: target }, o));
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-      a.download = name + '.svg'; a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    } else {
-      const cv = document.createElement('canvas');
-      const img = S.renderCode(lastGeom, Object.assign({ pxPerUnit: target / (2 * S.frameOuter(lastGeom.rings)) }, o));
-      cv.width = img.width; cv.height = img.height;
-      cv.getContext('2d').putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
-      const a = document.createElement('a');
-      a.href = cv.toDataURL('image/png'); a.download = name + '.png'; a.click();
+    try {
+      if (kind === 'svg') {
+        const svg = S.toSVG(lastGeom, Object.assign({ px: target }, o));
+        saveBlob(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), name + '.svg');
+      } else {
+        const img = S.renderCode(lastGeom, Object.assign({ pxPerUnit: target / (2 * S.frameOuter(lastGeom.rings)) }, o));
+        saveBlob(pngBlobFromRgba(img.data, img.width, img.height), name + '.png');
+      }
+      $('gen-msg').className = 'msg ok';
+      $('gen-msg').textContent = t('msg.downloaded', { fmt: kind.toUpperCase() });
+      toast(t('toast.saved', { fmt: kind.toUpperCase(), name: name + '.' + kind }), 'ok', t('gen.preview'));
+    } catch (err) {
+      const msg = t('msg.downloadFail', { err: (err && err.message) ? err.message : String(err) });
+      $('gen-msg').className = 'msg err';
+      $('gen-msg').textContent = msg;
+      toast(msg, 'err', t('gen.output'));
     }
-    $('gen-msg').className = 'msg ok';
-    $('gen-msg').textContent = t('msg.downloaded', { fmt: kind.toUpperCase() });
-    toast(t('toast.saved', { fmt: kind.toUpperCase(), name: name + '.' + kind }), 'ok', t('gen.preview'));
   }
 
   /* 範例 payload */

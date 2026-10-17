@@ -31,6 +31,9 @@
   --ink:#f4f6f8; --ink-2:#c6cdd4; --muted:#9aa4ae; --dim:#828d98;
   --blue:#49a8f5; --blue-d:#2b82cc; --bar:#1c78c6; --bar-2:#176cae;
   --bar-alt:#1e242c; --on-bar-alt:var(--ink-2);
+  --sel-bg:#12161d;
+  --sel-shadow:0 12px 28px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.35);
+  --sel-shadow-up:0 -12px 28px rgba(0,0,0,.55), 0 -2px 8px rgba(0,0,0,.35);
   --mag:#c2185b; --mag-2:#a5124c;
   --warn:#f0ac46; --ok:#57d096; --bad:#f2646a;
   --on-blue:#ffffff; --on-mag:#ffffff;
@@ -47,6 +50,9 @@ html[data-theme="light"]{
   --ink:#0a0f15; --ink-2:#2b333c; --muted:#4d5763; --dim:#5d6672;
   --blue:#0d63b0; --blue-d:#0a4e8c; --bar:#0d63b0; --bar-2:#0a4e8c;
   --bar-alt:#d8dde4; --on-bar-alt:var(--ink-2);
+  --sel-bg:#ffffff;
+  --sel-shadow:0 10px 24px rgba(12,18,26,.18), 0 2px 6px rgba(12,18,26,.08);
+  --sel-shadow-up:0 -10px 24px rgba(12,18,26,.18), 0 -2px 6px rgba(12,18,26,.08);
   --mag:#b3144f; --mag-2:#8f0f40;
   --warn:#8a5a00; --ok:#0b6b45; --bad:#b3262c;
   --on-blue:#ffffff; --on-mag:#ffffff;
@@ -240,20 +246,35 @@ label.rng .val{color:var(--ink-2);font-size:12px;min-width:44px;text-align:right
 .srow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:9px}
 .srow:first-child{margin-top:0}
 
+/* 下拉選單開啟時提升圖層層級，避免被下方的面板或相鄰元件遮擋 */
+.app:has(.sel.open),.app.has-open-sel{z-index:10}
+.top:has(.sel.open),.top.has-open-sel{z-index:70}
+.box:has(.sel.open),.box.has-open-sel,
+.stage:has(.sel.open),.stage.has-open-sel{position:relative;z-index:30}
+.fields > label:has(.sel.open),.fields > label.has-open-sel,
+.srow:has(.sel.open),.srow.has-open-sel,
+.scan-actions:has(.sel.open),.scan-actions.has-open-sel,
+label:has(.sel.open),label.has-open-sel{position:relative;z-index:35}
+
 /* ---------------------------------------------------- 自訂下拉選單 */
 .sel{position:relative;width:100%;min-width:0}
+.sel.open{z-index:40}
 .sel-btn{width:100%;min-width:0;overflow:hidden;min-height:36px;display:flex;align-items:center;
   justify-content:space-between;gap:8px;background:var(--panel);border:1px solid var(--line);
   color:var(--ink);padding:7px 11px;font-size:13px;text-align:left}
 .sel-btn:hover{border-color:var(--line-2);background:var(--panel-2)}
 .sel-btn .arw{width:7px;height:7px;border-right:1.5px solid var(--muted);border-bottom:1.5px solid var(--muted);
-  transform:rotate(45deg) translateY(-2px);flex:0 0 auto}
+  transform:rotate(45deg) translateY(-2px);flex:0 0 auto;transition:transform .14s ease}
 .sel.open .sel-btn{border-color:var(--blue)}
+.sel.open .sel-btn .arw{transform:rotate(225deg) translateY(-2px)}
+.sel.open-up .sel-btn .arw{transform:rotate(225deg) translateY(-2px)}
 .sel-val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
-.sel-list{position:absolute;left:0;right:0;top:calc(100% + 1px);z-index:40;margin:0;padding:0;list-style:none;
-  background:var(--panel);border:1px solid var(--line-2);max-height:260px;overflow:auto;display:none}
+.sel-list{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:100;margin:0;padding:0;list-style:none;
+  background:var(--sel-bg);border:1px solid var(--line-2);box-shadow:var(--sel-shadow);
+  max-height:260px;overflow-y:auto;overflow-x:hidden;display:none;overscroll-behavior:contain}
 .sel.open .sel-list{display:block}
-.sel-list li{padding:8px 11px;font-size:13px;color:var(--ink-2);cursor:pointer;border-bottom:1px solid var(--line-3)}
+.sel.open-up .sel-list{top:auto;bottom:calc(100% + 2px);box-shadow:var(--sel-shadow-up)}
+.sel-list li{padding:8px 11px;font-size:13px;color:var(--ink-2);cursor:pointer;border-bottom:1px solid var(--line-3);user-select:none}
 .sel-list li:last-child{border-bottom:0}
 .sel-list li:hover,.sel-list li.focus{background:var(--panel-2);color:var(--ink)}
 .sel-list li[aria-selected="true"]{background:var(--bar);color:var(--on-blue)}
@@ -4563,6 +4584,40 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
 
   /* ---------------------------------------------------- 自訂下拉選單
    * 保留原生 <select>（隱藏）作為資料來源與事件來源，畫面由 .sel 呈現。 */
+  function closeAllSel() {
+    document.querySelectorAll('.sel.open').forEach(x => {
+      x.classList.remove('open', 'open-up');
+      const b = x.querySelector('.sel-btn');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+    document.querySelectorAll('.has-open-sel').forEach(el => el.classList.remove('has-open-sel'));
+  }
+
+  function markSelAncestors(node) {
+    let p = node.parentElement;
+    while (p && p !== document.body) {
+      if (p.classList.contains('box') || p.classList.contains('stage') ||
+          p.classList.contains('fields') || p.tagName === 'LABEL' ||
+          p.classList.contains('srow') || p.classList.contains('scan-actions') ||
+          p.classList.contains('top') || p.classList.contains('app')) {
+        p.classList.add('has-open-sel');
+      }
+      p = p.parentElement;
+    }
+  }
+
+  function positionSelList(node, btn, list) {
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const listHeight = Math.min(260, Math.max(120, (list.children.length || 4) * 36));
+    if (spaceBelow < Math.min(listHeight + 16, 220) && spaceAbove > spaceBelow) {
+      node.classList.add('open-up');
+    } else {
+      node.classList.remove('open-up');
+    }
+  }
+
   function initSel(node) {
     const src = document.getElementById(node.dataset.for);
     if (!src) return;
@@ -4578,32 +4633,52 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     };
     node._refresh = refresh;
     refresh();
-    const close = () => { node.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+
     const pick = (i) => {
       if (i < 0 || i >= src.options.length) return;
       src.selectedIndex = i;
       src.dispatchEvent(new Event('change', { bubbles: true }));
-      close();
+      closeAllSel();
       btn.focus();
     };
+
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const willOpen = !node.classList.contains('open');
-      document.querySelectorAll('.sel.open').forEach(x => x.classList.remove('open'));
-      node.classList.toggle('open', willOpen);
-      btn.setAttribute('aria-expanded', String(willOpen));
+      const isAlreadyOpen = node.classList.contains('open');
+      closeAllSel();
+      if (!isAlreadyOpen) {
+        positionSelList(node, btn, list);
+        node.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        markSelAncestors(node);
+        const selLi = list.querySelector('[aria-selected="true"]');
+        if (selLi) selLi.scrollIntoView({ block: 'nearest' });
+      }
     });
+
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         pick(src.selectedIndex + (e.key === 'ArrowDown' ? 1 : -1));
-      } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.classList.toggle('open'); }
-      else if (e.key === 'Escape') close();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      } else if (e.key === 'Escape') {
+        closeAllSel();
+      }
     });
-    list.addEventListener('click', (e) => { const li = e.target.closest('li'); if (li) pick(+li.dataset.i); });
-    document.addEventListener('click', close);
+
+    list.addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li) pick(+li.dataset.i);
+    });
+
     src.addEventListener('change', refresh);
   }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.sel')) closeAllSel();
+  });
+  window.addEventListener('resize', closeAllSel, { passive: true });
   const refreshSelects = () => document.querySelectorAll('.sel').forEach(n => n._refresh && n._refresh());
 
   /* ---------------------------------------------------- 語言 + 主題 */

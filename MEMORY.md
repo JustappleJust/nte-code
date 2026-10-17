@@ -80,6 +80,17 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
   逐位相同、底盤 clip 半徑 < 畫布半寬、背景矩形鋪滿 viewBox、漸層跨度＝邊長、marginU=0 滿版）；
   另以 resvg 光柵化後與 `renderCode` 逐像素比對，三外形 × 留白 0.5/2/6u 共 9 組 **IoU 0.986–0.992**。
 - 單檔已重建：`node app/build-single.mjs`（361,258 bytes，diff 只有 toSVG 那段）。
+- **`docs/example-1.svg` / `example-2.svg` 已重新導出**（兩張都是同一 bug 的舊成品）。做法不是手改數字而已：
+  1. 由 viewBox 反推 `S = 舊邊長/64`（例 1：41.3u → `margin 2 + padU 4.9` → `R6 = 34.4` = **8 圈**；例 2：32.9u → **5 圈**）；
+  2. 先把舊檔「機械變換」（座標 ×64、viewBox 改 2·S·64）後用 **resvg 光柵化 → `S.decodeImage` 掃回 payload**
+     （例 1 `https://justapplejust.github.io/nte-code/app/index.html`、例 2 `https://discord.gg/GtCdyxxWSN`，都是 `ecLevel 1 / M`）；
+  3. 用修正後的核心 `S.toSVG(encode(text,{ecLevel:1}), {px:1024, shape:'label', marginU:2, ringText:'NTE · BAGEL'})` 重建，
+     因此兩張圖現在是**當前匯出器的真實輸出**，不是近似。
+  - 校驗：橢圓數 264／123 與舊檔相同、把數字抽掉後**骨架逐字節相同**、264/123 個旋轉角逐一未變、16 條弧旗標不變；
+    與機械變換版本的光柵 IoU **0.9995 / 0.9996**（墨量 14.78% / 15.28% 一模一樣）；兩張都**可掃回原 URL**
+    （舊檔 `decodeImage` → 「找不到外框環」，等於那時的 SVG 成品根本掃不起來）。
+- README 順手修掉兩處過期文件：宣稱「SVG 以 `<textPath>` 輸出文字環」×2（第 56 行與 API 範例），實為內嵌字廓的
+  `<path fill-rule="nonzero">`；`docs/` 說明也補上範例 SVG 與前後對照圖。
 
 ## Actions Taken（本輪）
 1. fontTools 取 Quicksand wght700 → RDP(ε2.5) 輪廓 → 嵌入核心（首版 26 KB，簡化後 17.7 KB）。

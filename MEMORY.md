@@ -1,9 +1,9 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**PNG 導出已修好**（data: URL 下載在 Chrome／預覽 iframe 會被擋；改 Blob URL + `S.encodePNG` 備援）。
-單檔 `node app/build-single.mjs` → **283.3 KB**；`test/style.js` **42/42**（含 encodePNG）。
-Phase 8／9 既有驗收仍有效。下一步＝等使用者驗收本項。
+**最新 UI 修正**：色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示改為與頁首一致的雙圓環，放在圓形藍底。
+PNG 導出仍使用 Blob URL + `S.encodePNG` 備援；單檔由 `node app/build-single.mjs` 產生。
+Phase 8／9 既有驗收仍有效。
 
 ## Task
 Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資料、任意方向解碼、
@@ -37,8 +37,8 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 - `app/style.css`（約 470 行，v6 幾乎重寫）：`--bar:#1c78c6`（深）／`#0d63b0`（淺）、`--mag:#c2185b`／`#b3144f`、
   `.box-h{height:38px}`、`.sub-h` 洋紅長方塊＋點點、`.outbar` 兩欄（icon 在上、文字在下）、
   `.tag.linkish` 白底藍字（完全掃描器）、`#dbg{display:none}`、桌機 `.stagewrap{position:sticky}`、無區塊內捲軸。
-- `app/app.js`（約 1,120 行）：`fillBands()` 現在把色帶寫成靜態一行、`.fx .wm` 各寫一個字（`wm.words`）；
-  `styleOpts()` 對 label 固定 `ringText='NTE · BAGEL'`；切語言會重建選項並重新產生。
+- `app/app.js`（約 1,120 行）：`fillBands()` 量測各色帶寬度並靜態重複固定字樣至填滿；`ResizeObserver` 在容器縮放時重算；
+  `.fx .wm` 各寫一個字（`wm.words`）；`styleOpts()` 對 label 固定 `ringText='NTE · BAGEL'`；切語言會重建選項並重新產生。
 - `app/i18n.js`：四語系各 233+ keys；檔尾有 `V9` 覆寫表（hero.*、gen.png/svg、readout.print=列印估計、
   scan.req.value 白話、footer、band、label.ringText）＋ `SPEC_PATCH` 修正說明頁字串；`dict[lang]['wm.words']`
   是背景三個字（異環|唄果|芝碼／NTE|BAGEL|SESAMECODE／ネバエバ|ベーグル|ゴマコード）。

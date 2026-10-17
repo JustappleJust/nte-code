@@ -17,7 +17,7 @@
 <meta property="og:image:height" content="950">
 <meta property="og:image:alt" content="芝碼 SesameCode 產生器介面：預覽中的圓形芝麻碼與控制項">
 <meta property="og:locale" content="zh_TW">
-<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMGIwZTEzIi8+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMjMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzNlYThmZiIgc3Ryb2tlLXdpZHRoPSI1IgogICAgICAgICAgcGF0aExlbmd0aD0iMzYwIiBzdHJva2UtZGFzaGFycmF5PSI1NSA1IiB0cmFuc2Zvcm09InJvdGF0ZSgtMTA4IDMyIDMyKSIvPgogIDxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjEwLjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2YyZjRmNiIgc3Ryb2tlLXdpZHRoPSI1Ii8+Cjwvc3ZnPgo=" type="image/svg+xml">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPCEtLSBNYXRjaCB0aGUgcGFnZSdzIGRvdWJsZS1yaW5nIG1hcmssIHNjYWxlZCBpbnRvIGEgY2lyY3VsYXIgYnJhbmQtYmx1ZSBiYWRnZS4gLS0+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzEiIGZpbGw9IiMxYzc4YzYiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyNS42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmNGY2ZjgiIHN0cm9rZS13aWR0aD0iNS44NjY3IgogICAgICAgICAgcGF0aExlbmd0aD0iMzYwIiBzdHJva2UtZGFzaGFycmF5PSI1NSA1IiB0cmFuc2Zvcm09InJvdGF0ZSgtMTA4IDMyIDMyKSIvPgogIDxjaXJjbGUgY3g9IjMyIiBjeT0iMzIiIHI9IjExLjczMzMiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2Y0ZjZmOCIgc3Ryb2tlLXdpZHRoPSI1Ljg2NjciLz4KPC9zdmc+Cg==" type="image/svg+xml">
 <style>
 /* ============================================================================
  * 芝碼 SesameCode — 介面樣式 v6
@@ -101,7 +101,7 @@ html[data-theme="light"] .fx .wm{opacity:.085}
 .band-in{max-width:1440px;margin:0 auto;padding:4px 20px;display:block;overflow:hidden;
   font-family:var(--narrow);font-style:italic;font-weight:700;font-size:12px;letter-spacing:.2em;
   text-transform:uppercase;white-space:nowrap;text-overflow:clip}
-.band-in span{display:inline-block;white-space:nowrap;padding-right:2.2em}
+.band-in span{display:inline-block;white-space:nowrap}
 
 /* --------------------------------------------------------------- 分頁 */
 .tabs{display:flex;gap:2px;margin-left:14px;align-self:center}
@@ -4633,16 +4633,34 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   })();
 
   /* ------------------------------------------------ 色帶 / 背景散佈字
-   * 色帶是靜態的一整行（不做跑馬燈動畫）；背景是三個獨立的單字，各自擺放。 */
+   * 色帶依容器寬度靜態重複至填滿（不做跑馬燈動畫）；背景是三個獨立的單字，各自擺放。 */
+  let bandResizeObserver = null;
   function fillBands() {
-    const line = t('band');
-    document.querySelectorAll('.band-in span').forEach(el => {
-      el.textContent = (line + ' ' + line).replace(/\s+/g, ' ');
+    const line = String(t('band')).replace(/\s+/g, ' ').trim() + ' ';
+    document.querySelectorAll('.band-in').forEach(band => {
+      const el = band.querySelector('span');
+      if (!el) return;
+      el.textContent = line;
+      const style = window.getComputedStyle(band);
+      const availableWidth = Math.max(0, band.clientWidth
+        - (parseFloat(style.paddingLeft) || 0)
+        - (parseFloat(style.paddingRight) || 0));
+      const lineWidth = el.getBoundingClientRect().width;
+      const copies = lineWidth > 0 ? Math.max(1, Math.ceil((availableWidth + 1) / lineWidth)) : 1;
+      el.textContent = line.repeat(copies);
     });
     const words = String(t('wm.words')).split('|');
     document.querySelectorAll('.fx .wm').forEach((el, i) => {
       el.textContent = words[i % words.length];
     });
+  }
+  function observeBandWidths() {
+    if (typeof ResizeObserver === 'function') {
+      bandResizeObserver = new ResizeObserver(fillBands);
+      document.querySelectorAll('.band-in').forEach(band => bandResizeObserver.observe(band));
+    } else {
+      window.addEventListener('resize', fillBands, { passive: true });
+    }
   }
 
   /* ---------------------------------------------------- 路由（#） */
@@ -5555,6 +5573,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     fsSection.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     $('fs-result').hidden = true;
+    fillBands();
     startFsCam();
   }
   function closeFull() {
@@ -5660,6 +5679,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   document.querySelectorAll('.sel').forEach(initSel);
   I18N.apply();
   fillBands();
+  observeBandWidths();
   buildRingOptions();
   refreshSelects();
   renderPresets();

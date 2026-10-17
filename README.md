@@ -12,6 +12,9 @@
 
 > ⚠️ **來源聲明**：本專案是受《異環》(Neverness to Everness) 世界觀啟發的**同人創作**（唄果、唄主、芝碼皆為致敬性的再創作），與 Hotta Studio、完美世界及其代理商沒有關聯，未經授權、也未使用任何官方素材或美術；介面配色與版面僅為風格上的致敬。遊戲名稱與商標屬於其各自權利人。
 
+- 直接開啟：https://justapplejust.github.io/nte-code/app/index.html
+- 開啟掃描器：https://justapplejust.github.io/nte-code/app/index.html#full
+
 ---
 
 ## 1. 快速開始

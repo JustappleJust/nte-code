@@ -1,9 +1,6 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**最新 SVG 修正（第十二輪）**：`toSVG` 的 viewBox 與圖形座標不同尺度（見下），已修正為「每 1u = 64 個 viewBox 單位」全場一致；
-PNG／SVG 構圖逐像素一致（resvg 比對 IoU ≥ 0.986），`test/style.js` §6b 為防回歸專用檢查（**64 通過 / 0 失敗**）。
-
 **最新 UI 修正**：
 1. 解決下拉選單（`.sel`）展開時被下方卡片（`.box`、`.fields`、`.stage`、`footer` 等）因堆疊上下文（stacking context）遮擋的問題：展開時動態提升祖先容器之 z-index（`:has(.sel.open)` 與 `.has-open-sel` 雙層機制），並支援視窗邊界自動向上彈出（`.open-up`），選單清單改用不透明背景與陰影，保證所有選項皆可見且能點擊。
 2. 頁尾底部的 `NTE · BAGEL · SESAMECODE` 色帶改回灰色（深淺主題分別採用 `--bar-alt` / `--on-bar-alt`），不再與頂欄同樣為藍色；色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示為雙圓環圓形藍底。
@@ -64,34 +61,6 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 - `fsHit` 開頭若舊動畫仍在跑先 `fxStop(false)`，避免兩個 rAF 迴圈搶同一顆 `#fs-fx`；`closeFull`／`fs-again`／`beforeunload` 走 `fxStop` 也會解凍。
 - 關閉效果或 `prefers-reduced-motion` 不進 `fxPlay`，因此不凍結（維持原行為）。
 
-## 第十二輪（SVG 導出巨大留白）
-- 症狀：「導出 SVG」得到的檔案四周有一圈巨大空白，芝碼只有畫布的約 1/34（內容佔半寬 2.9%），向量檔看起來是空的。
-- 根因（同一段的兩個尺度錯誤）：
-  1. `toSVG` 以 `v2 = S * 64` 定義 viewBox（意圖是「每 1u = 64 單位」），但所有**圖形**路徑（`capArcPath`／`annulusPath`／
-     `<ellipse>`／`labelGeometry` 的字形輪廓）都是直接吐 u 尺度數字，沒有乘 64 → 內容縮成 1/64。
-     只有 `plateR` 與漸層跨度有乘，所以底盤與漸層是「另一套尺度」，連帶露餡。
-  2. `S` 是**半寬**（同 `renderCode` 的 `halfU`），但被當成**邊長**用（`box = -v2/2 … v2`）→ viewBox 半寬只有 `S*32`。
-     副作用：`圓形` 的底盤 clip 半徑 `(R6+margin)*64` ≈ 畫布半寬的 2 倍，**四角完全裁不掉**（PNG 是透明、SVG 卻是方角）。
-- 定案：新增 `UPX = 64`（每 1u 的 viewBox 單位數）與 `nu()`（u → viewBox，3 位小數）、`n2()` 改同一倍率；
-  `v2 = S * 2 * UPX`（邊長）；`plateR` 改用 `* UPX`。角度（`rotate()`）與 `fill-opacity` 一律走**不縮放**的 `n()`——
-  直接把 `n` 改成會乘 64 的寫法會順手把 `rotate(64×角度)`、`fill-opacity="64.000"` 一起弄壞，故兩個格式化器分开。
-- 另外把 label 段落裡遮蔽外部 `n` 的 `const n = c.length >> 1` 改名為 `np`（今天無害，但是一個地雷）。
-- 驗收：`node test/style.js` §6b（viewBox 邊長＝2·(R6+margin+padU)·64、外框最外緣＝R6·64、留白比例與 `renderCode`
-  逐位相同、底盤 clip 半徑 < 畫布半寬、背景矩形鋪滿 viewBox、漸層跨度＝邊長、marginU=0 滿版）；
-  另以 resvg 光柵化後與 `renderCode` 逐像素比對，三外形 × 留白 0.5/2/6u 共 9 組 **IoU 0.986–0.992**。
-- 單檔已重建：`node app/build-single.mjs`（361,258 bytes，diff 只有 toSVG 那段）。
-- **`docs/example-1.svg` / `example-2.svg` 已重新導出**（兩張都是同一 bug 的舊成品）。做法不是手改數字而已：
-  1. 由 viewBox 反推 `S = 舊邊長/64`（例 1：41.3u → `margin 2 + padU 4.9` → `R6 = 34.4` = **8 圈**；例 2：32.9u → **5 圈**）；
-  2. 先把舊檔「機械變換」（座標 ×64、viewBox 改 2·S·64）後用 **resvg 光柵化 → `S.decodeImage` 掃回 payload**
-     （例 1 `https://justapplejust.github.io/nte-code/app/index.html`、例 2 `https://discord.gg/GtCdyxxWSN`，都是 `ecLevel 1 / M`）；
-  3. 用修正後的核心 `S.toSVG(encode(text,{ecLevel:1}), {px:1024, shape:'label', marginU:2, ringText:'NTE · BAGEL'})` 重建，
-     因此兩張圖現在是**當前匯出器的真實輸出**，不是近似。
-  - 校驗：橢圓數 264／123 與舊檔相同、把數字抽掉後**骨架逐字節相同**、264/123 個旋轉角逐一未變、16 條弧旗標不變；
-    與機械變換版本的光柵 IoU **0.9995 / 0.9996**（墨量 14.78% / 15.28% 一模一樣）；兩張都**可掃回原 URL**
-    （舊檔 `decodeImage` → 「找不到外框環」，等於那時的 SVG 成品根本掃不起來）。
-- README 順手修掉兩處過期文件：宣稱「SVG 以 `<textPath>` 輸出文字環」×2（第 56 行與 API 範例），實為內嵌字廓的
-  `<path fill-rule="nonzero">`；`docs/` 說明也補上範例 SVG 與前後對照圖。
-
 ## Actions Taken（本輪）
 1. fontTools 取 Quicksand wght700 → RDP(ε2.5) 輪廓 → 嵌入核心（首版 26 KB，簡化後 17.7 KB）。
 2. 改寫 `arcText` 三次：先線條字（否決）→ 字形輪廓（方向錯、字距單位錯、even-odd 破洞）→ 定案（非零繞數、4×SS）。
@@ -102,9 +71,6 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 6. 驗證：run/style/photo 測試、label 三外形解碼、e2e 22 項、單檔 file:// 離線、字型授權檔、README、MEMORY。
 
 ## Errors & Dead Ends
-- SVG 巨大留白：根因不是「留白參數太大」，而是 **u ↔ viewBox 的換算只套在底盤／漸層上、沒套在圖形上**，
-  外加把半寬當成邊長（`v2 = S*64`）。修這類「輸出看起來是空的」問題，先量**內容外接半徑 / viewBox 半寬**，
-  再去對照光柵化路徑的同一個比值，兩邊不一致就是尺度問題，而不是 geometry 算錯。
 - 用線段筆畫自製「圓體字」→ 像手寫字，否決；改成內嵌真實字型輪廓。
 - 字形上下顛倒／偏左：rBase 方向與 pen 單位（em vs u）搞混；正確為 `r = rBase - nu`、`penU` 一律用 u。
 - even-odd 填色會在 B／A 等重疊輪廓產生髮絲縫 → 必須用**非零繞數**。

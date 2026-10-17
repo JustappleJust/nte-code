@@ -157,6 +157,85 @@ console.log('\n=== 6. SVG 輸出 ===');
   if (SAVE) fs.writeFileSync(`${OUT}/style_gradient.svg`, grad);
 }
 
+console.log('\n=== 6b. SVG 尺寸換算（巨大留白回歸）===');
+/* toSVG 把 viewBox 定为每 u = UPX 個單位；幾何座標必須同步乘上 UPX，
+   否則圖形停在 u 尺度 → 成品只有畫布的 1/64，四周全是空白。 */
+const UPX = 64;
+/** 解析 SVG 實際畫出的圖形，回傳離原点的最大半徑（viewBox 單位） */
+function svgInkRadius(svg) {
+  let max = 0;
+  for (const m of svg.matchAll(/<path[^>]*\sd="([^"]+)"/g)) {
+    const t = m[1].match(/[MLAZ]|-?\d*\.?\d+/g) || [];
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] === 'M' || t[i] === 'L') max = Math.max(max, Math.hypot(+t[i + 1], +t[i + 2]));
+      else if (t[i] === 'A') {                       // A rx ry rot large sweep x y
+        max = Math.max(max, +t[i + 1], Math.hypot(+t[i + 6], +t[i + 7]));
+        i += 7;
+      }
+    }
+  }
+  for (const m of svg.matchAll(/<ellipse[^>]*\/>/g)) {
+    const at = {};
+    for (const a of m[0].matchAll(/(\w+)="(-?[\d.]+)"/g)) at[a[1]] = +a[2];
+    max = Math.max(max, Math.hypot(at.cx, at.cy) + Math.max(at.rx, at.ry));
+  }
+  return max;
+}
+const vbOf = svg => /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
+{
+  const R6 = S.frameOuter(geom.rings), marginU = 2, PAD = { square: 0, circle: 0.5, label: 4.9 };
+  for (const [shape, padU] of Object.entries(PAD)) {
+    const o = { px: 512, shape, marginU };
+    if (shape === 'label') o.ringText = 'NTE · BAGEL';
+    const svg = S.toSVG(geom, o);
+    const [minx, miny, side] = vbOf(svg);
+    const halfU = R6 + marginU + padU;                 // 內容半寬（u），與 renderCode 的 halfU 同義
+    check(`${shape}：viewBox 邊長 = 2·(外框+留白+外邊)·${UPX}`, Math.abs(side - 2 * halfU * UPX) < 0.01,
+      `實得 ${side.toFixed(1)}／預期 ${(2 * halfU * UPX).toFixed(1)}`);
+    check(`${shape}：viewBox 以原點為中心`, Math.abs(minx + side / 2) < 0.01 && Math.abs(miny + side / 2) < 0.01);
+    const ink = svgInkRadius(svg), ratio = ink / (side / 2);
+    // 與 renderCode 完全相同的構圖比例：內容半徑 / 畫布半寬 = R6 / halfU
+    const expect = R6 / halfU;
+    if (shape === 'label') {
+      check('label：標示文字超出外框但不超出畫布', ink > R6 * UPX && ink <= side / 2 + 0.01,
+        `文字外緣 ${(ink / UPX).toFixed(2)}u、外框 ${R6}u、邊界 ${halfU}u`);
+      check('label：內容仍占滿半寬（無巨大留白）', ratio > 0.85, `占 ${(ratio * 100).toFixed(1)}%`);
+    } else {
+      check(`${shape}：外框最外緣 =  viewBox 座標（R6·${UPX}）`, Math.abs(ink - R6 * UPX) < 0.05,
+        `實得 ${ink.toFixed(1)}／預期 ${(R6 * UPX).toFixed(1)}`);
+      check(`${shape}：留白比例與 PNG 相同`, Math.abs(ratio - expect) < 1e-6,
+        `占半寬 ${(ratio * 100).toFixed(2)}%（PNG ${(expect * 100).toFixed(2)}%；未換算時只有 ${(expect / 32 * 100).toFixed(1)}%）`);
+    }
+    // 背景矩形必須恰好鋪滿 viewBox（多出來的就是空白邊）
+    const bg = /<rect x="(-?[\d.]+)" y="(-?[\d.]+)" width="([\d.]+)" height="([\d.]+)"/.exec(svg);
+    check(`${shape}：背景矩形鋪滿 viewBox`, !!bg && Math.abs(+bg[1] + side / 2) < 0.01 && Math.abs(+bg[3] - side) < 0.01);
+    // 輸出尺寸：px 直接是畫布邊長
+    check(`${shape}：width/height 與 viewBox 同步縮放`, /width="512" height="512"/.test(svg));
+  }
+  // 圓形底盤：clip 半徑必須小於畫布半寬，否則四角裁不掉（與 PNG 不一致）
+  const ci = S.toSVG(geom, { px: 512, shape: 'circle', marginU: 2 });
+  const m = /<clipPath id="plate"><circle[^>]*r="([\d.]+)"/.exec(ci);
+  check('圓形底盤 clip 有效：半徑 = (R6+留白)·64 且小於畫布半寬',
+    !!m && +m[1] < vbOf(ci)[2] / 2 && Math.abs(+m[1] - (R6 + marginU) * UPX) < 0.01,
+    m ? `底盤 ${(m[1] / UPX).toFixed(2)}u／畫布半寬 ${(vbOf(ci)[2] / 2 / UPX).toFixed(2)}u（外邊 0.5u）` : '缺少 clipPath');
+  // 漸層跨度以 viewBox 為基準（角度 135° → 跨度 = 邊長）
+  const gd = S.toSVG(geom, { px: 512, marginU: 2, inkStyle: { from: [0, 0, 0], to: [255, 255, 255], angle: 135 } });
+  const gm = /<linearGradient[^>]*x1="(-?[\d.]+)"[^>]*y1="(-?[\d.]+)"[^>]*x2="(-?[\d.]+)"[^>]*y2="(-?[\d.]+)"/.exec(gd);
+  check('漸層跨度 = viewBox 邊長（不被縮放錯誤拉偏）',
+    !!gm && Math.abs(Math.abs(+gm[3] - +gm[1]) - vbOf(gd)[2]) < 0.02, gm && `span ${Math.abs(gm[3] - gm[1]).toFixed(1)}`);
+  // 留白為 0 時內容正好滿版
+  const tight = S.toSVG(geom, { px: 512, marginU: 0 });
+  check('marginU = 0 時內容滿版（無殘留空白）',
+    Math.abs(svgInkRadius(tight) * 2 - vbOf(tight)[2]) < 0.05,
+    `半徑 ${(svgInkRadius(tight) / UPX).toFixed(2)}u／邊界 ${(vbOf(tight)[2] / 2 / UPX).toFixed(2)}u`);
+  // 大圖數值精度：3 位小數在放大後仍遠小於一個畫素
+  const big = S.toSVG(geom, { px: 4096 });
+  const step = vbOf(big)[2] / 4096;                       // 1 畫素 = ? viewBox 單位
+  check('座標解析度遠高於輸出尺寸（放大列印不鋸齒）', 0.01 < step / 8,
+    `4096px 時 1 畫素 = ${step.toFixed(4)} 單位 > 字形 0.01／路徑 0.001`);
+  if (SAVE) fs.writeFileSync(`${OUT}/style_fixed.svg`, big);
+}
+
 console.log('\n=== 7. 預設外觀不受影響 ===');
 {
   const img = S.renderCode(geom, { pxPerUnit: PPU });

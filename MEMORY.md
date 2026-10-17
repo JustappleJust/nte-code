@@ -50,6 +50,17 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 - `docs/`：ui-generate / ui-label / ui-appearance / ui-scan / ui-spec / ui-light / ui-mobile（1440×950、手機 390×844）。
 - `README.md`：v6 條列、檔案結構、v6 驗證列、標示文字限制說明。
 
+## 第十一輪（相機凍結，使用者 1 點）
+「完全掃描頁」的「掃描效果」開啟時，掃到芝碼要**暫時凍結相機畫面**，動畫完成後（**不用按「再掃一次」**）
+以**漸變**恢復 live 相機畫面。
+- 做法：沿用既有 `#fs-bg` 圖層（原本只有圖片掃描才鋪）。`fxPlay` 一開場就 `fxMakeHitCanvas(hit)` 把**剛剛解碼的那一格**
+  畫進 `fs-bg`，`.fs-cam` 加 `bg-frozen`（`opacity:1; transition:none` → 立即凍結）。
+- 解凍：動畫 `finish()` 與 `fxStop()` 都呼叫 `fsThawCam()`（移除 `bg-frozen`），由 CSS `.fs-bg{transition:opacity .72s}`
+  漸變回 live 畫面；`#fs-video` 全程不暫停（只是被蓋住）。
+- 狀態：`bg-frozen`（相機凍結）／`bg-still`（圖片掃描，來源畫面一直保留、不淡出）／無 class（live）。`fsClearBg()` 會清掉兩者。
+- `fsHit` 開頭若舊動畫仍在跑先 `fxStop(false)`，避免兩個 rAF 迴圈搶同一顆 `#fs-fx`；`closeFull`／`fs-again`／`beforeunload` 走 `fxStop` 也會解凍。
+- 關閉效果或 `prefers-reduced-motion` 不進 `fxPlay`，因此不凍結（維持原行為）。
+
 ## Actions Taken（本輪）
 1. fontTools 取 Quicksand wght700 → RDP(ε2.5) 輪廓 → 嵌入核心（首版 26 KB，簡化後 17.7 KB）。
 2. 改寫 `arcText` 三次：先線條字（否決）→ 字形輪廓（方向錯、字距單位錯、even-odd 破洞）→ 定案（非零繞數、4×SS）。

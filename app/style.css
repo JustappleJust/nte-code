@@ -416,7 +416,11 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
 .fs-hint{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-family:var(--mono);font-size:12px;
   letter-spacing:.06em;color:#e7eef5;text-shadow:0 1px 10px rgba(0,0,0,.85);z-index:2}
 .fs-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;display:block}
-.fs-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:block}
+/* 凍結畫面：相機掃到芝碼時先蓋上當下那一格，動畫結束再淡出交回 live 畫面 */
+.fs-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:block;
+  opacity:0;transition:opacity .72s ease}
+.fs-cam.bg-frozen .fs-bg{opacity:1;transition:none}
+.fs-cam.bg-still .fs-bg{opacity:1;transition:none}
 .fs-flash{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:rgba(87,208,150,.34);z-index:4}
 .fs-flash.on{opacity:1;transition:none}
 .fs-top{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;gap:9px;z-index:6}

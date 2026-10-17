@@ -1102,6 +1102,7 @@
   }
   function fxStop(revealNow) {
     if (fxRAF) { cancelAnimationFrame(fxRAF); fxRAF = 0; }
+    fsThawCam();   // 中斷動畫也要把畫面漸變回 live 畫面
     const cv = $('fs-fx');
     if (cv) {
       const c = cv.getContext('2d');
@@ -1147,11 +1148,34 @@
     c.drawImage(hitCv, 0, 0);
   }
   function fsClearBg() {
+    const camEl = fsSection.querySelector('.fs-cam');
+    if (camEl) camEl.classList.remove('bg-frozen', 'bg-still');
     const b = $('fs-bg');
     if (b) {
       const c = b.getContext('2d');
       if (c) { c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, b.width, b.height); }
     }
+  }
+  /** 相機掃到碼：把剛剛解碼的那一格鋪滿畫面（立即生效），蓋住 live 畫面 */
+  function fsFreezeCam(hitCv) {
+    const camEl = fsSection.querySelector('.fs-cam');
+    if (!camEl) return;
+    fsPaintBg(hitCv);
+    camEl.classList.remove('bg-still');
+    camEl.classList.add('bg-frozen');
+  }
+  /** 圖片掃描：來源影像一直留在場景上（不淡出） */
+  function fsHoldStill(hitCv) {
+    const camEl = fsSection.querySelector('.fs-cam');
+    if (!camEl) return;
+    fsPaintBg(hitCv);
+    camEl.classList.remove('bg-frozen');
+    camEl.classList.add('bg-still');
+  }
+  /** 解除凍結：移除 class 後由 CSS 漸變回 live 畫面（不用按「再掃一次」） */
+  function fsThawCam() {
+    const camEl = fsSection.querySelector('.fs-cam');
+    if (camEl) camEl.classList.remove('bg-frozen');
   }
   /** 從掃描影像取樣芝麻色／底色（含漸層方向），讓複製品的顏色對上原圖 */
   function fxSampleColors(hit, geo, R6u, bRad, mir) {
@@ -1267,9 +1291,11 @@
     }
     const halfU = clean.width / 2 / clean.pxPerUnit;
 
-    /* 圖片掃描：場景背景鋪在 fs-bg 圖層（相機模式由 live 畫面當背景） */
-    const hitCv = hit.kind === 'file' ? fxMakeHitCanvas(hit) : null;
-    if (hitCv) fsPaintBg(hitCv);
+    /* 掃描效果期間凍結畫面：相機用剛抓到的那一格，圖片用來源影像；
+       動畫結束（finish）或中斷（fxStop）時移除 class，以 CSS 漸變回 live 畫面。 */
+    const hitCv = fxMakeHitCanvas(hit);
+    if (hit.kind === 'file') fsHoldStill(hitCv);
+    else fsFreezeCam(hitCv);
 
     /* 結果面板先佔位量測（不可見），飛行動畫以此為目標 */
     resEl.hidden = false;
@@ -1382,6 +1408,7 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, cv.width, cv.height);
       cv.style.opacity = '1';
+      fsThawCam();   // 動畫播完：凍結畫面淡出，live 畫面漸變回來
       resEl.classList.remove('fx-pending');
       if (!shown) {
         shown = true;
@@ -1631,6 +1658,7 @@
   }
 
   function fsHit(r, hit) {
+    if (fxRAF) fxStop(false);   // 舊動畫還在跑就中止，避免兩個迴圈搶同一顆 canvas
     fsLocked = true;
     $('fs-flash').classList.add('on');
     setTimeout(() => $('fs-flash').classList.remove('on'), 140);
@@ -1648,8 +1676,8 @@
     fsStatus(t('fs.locked', { rings: r.rings }));
     $('fs-hint').hidden = true;
     showResult(r, 0);   // 同步寫進掃描器的紀錄
-    /* 圖片掃描：把來源影像留在場景上 */
-    if (hit && hit.kind === 'file') fsPaintBg(fxMakeHitCanvas(hit));
+    /* 圖片掃描：把來源影像留在場景上（相機模式的凍結由 fxPlay 開啟） */
+    if (hit && hit.kind === 'file') fsHoldStill(fxMakeHitCanvas(hit));
     /* 掃描效果：亮度環繞 → 芝麻波浪 → 乾淨複製 → 飛進結果區 */
     if (fsFxOn && hit && !fxReduced()) {
       if (fxPlay(hit, r)) return;      // 動畫結尾才把結果面板變換出來

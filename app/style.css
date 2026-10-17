@@ -80,7 +80,7 @@ html[data-theme="light"] .fx .wm{opacity:.085}
 .band-in{max-width:1440px;margin:0 auto;padding:4px 20px;display:block;overflow:hidden;
   font-family:var(--narrow);font-style:italic;font-weight:700;font-size:12px;letter-spacing:.2em;
   text-transform:uppercase;white-space:nowrap;text-overflow:clip}
-.band-in span{display:inline-block;white-space:nowrap;padding-right:2.2em}
+.band-in span{display:inline-block;white-space:nowrap}
 
 /* --------------------------------------------------------------- 分頁 */
 .tabs{display:flex;gap:2px;margin-left:14px;align-self:center}

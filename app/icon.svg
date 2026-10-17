@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" fill="#0b0e13"/>
-  <circle cx="32" cy="32" r="23" fill="none" stroke="#3ea8ff" stroke-width="5"
+  <!-- Match the page's double-ring mark, scaled into a circular brand-blue badge. -->
+  <circle cx="32" cy="32" r="31" fill="#1c78c6"/>
+  <circle cx="32" cy="32" r="25.6" fill="none" stroke="#f4f6f8" stroke-width="5.8667"
           pathLength="360" stroke-dasharray="55 5" transform="rotate(-108 32 32)"/>
-  <circle cx="32" cy="32" r="10.5" fill="none" stroke="#f2f4f6" stroke-width="5"/>
+  <circle cx="32" cy="32" r="11.7333" fill="none" stroke="#f4f6f8" stroke-width="5.8667"/>
 </svg>

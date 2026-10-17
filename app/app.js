@@ -113,16 +113,34 @@
   })();
 
   /* ------------------------------------------------ 色帶 / 背景散佈字
-   * 色帶是靜態的一整行（不做跑馬燈動畫）；背景是三個獨立的單字，各自擺放。 */
+   * 色帶依容器寬度靜態重複至填滿（不做跑馬燈動畫）；背景是三個獨立的單字，各自擺放。 */
+  let bandResizeObserver = null;
   function fillBands() {
-    const line = t('band');
-    document.querySelectorAll('.band-in span').forEach(el => {
-      el.textContent = (line + ' ' + line).replace(/\s+/g, ' ');
+    const line = String(t('band')).replace(/\s+/g, ' ').trim() + ' ';
+    document.querySelectorAll('.band-in').forEach(band => {
+      const el = band.querySelector('span');
+      if (!el) return;
+      el.textContent = line;
+      const style = window.getComputedStyle(band);
+      const availableWidth = Math.max(0, band.clientWidth
+        - (parseFloat(style.paddingLeft) || 0)
+        - (parseFloat(style.paddingRight) || 0));
+      const lineWidth = el.getBoundingClientRect().width;
+      const copies = lineWidth > 0 ? Math.max(1, Math.ceil((availableWidth + 1) / lineWidth)) : 1;
+      el.textContent = line.repeat(copies);
     });
     const words = String(t('wm.words')).split('|');
     document.querySelectorAll('.fx .wm').forEach((el, i) => {
       el.textContent = words[i % words.length];
     });
+  }
+  function observeBandWidths() {
+    if (typeof ResizeObserver === 'function') {
+      bandResizeObserver = new ResizeObserver(fillBands);
+      document.querySelectorAll('.band-in').forEach(band => bandResizeObserver.observe(band));
+    } else {
+      window.addEventListener('resize', fillBands, { passive: true });
+    }
   }
 
   /* ---------------------------------------------------- 路由（#） */
@@ -1035,6 +1053,7 @@
     fsSection.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     $('fs-result').hidden = true;
+    fillBands();
     startFsCam();
   }
   function closeFull() {
@@ -1140,6 +1159,7 @@
   document.querySelectorAll('.sel').forEach(initSel);
   I18N.apply();
   fillBands();
+  observeBandWidths();
   buildRingOptions();
   refreshSelects();
   renderPresets();

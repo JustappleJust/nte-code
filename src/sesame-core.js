@@ -2077,6 +2077,74 @@
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}" width="${o.px || 512}" height="${o.px || 512}">${defsBlock}${bgRect}${cutout ? '' : body}${labelTextSvg}</svg>`;
   }
 
+  /* =============================================================== PNG
+   * 無依賴 RGBA 編碼（color type 6）。瀏覽器 toDataURL 在大圖／data: URL
+   * 下載時常被擋；這個輸出可直接做成 Blob 觸發下載，並保留透明通道。 */
+  function crc32(buf) {
+    let c = 0xffffffff;
+    for (let i = 0; i < buf.length; i++) {
+      c ^= buf[i];
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    return (c ^ 0xffffffff) >>> 0;
+  }
+  function adler32(buf) {
+    let a = 1, b = 0;
+    for (let i = 0; i < buf.length; i++) { a = (a + buf[i]) % 65521; b = (b + a) % 65521; }
+    return ((b << 16) | a) >>> 0;
+  }
+  function u32be(n) {
+    return new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
+  }
+  function concatU8(parts) {
+    let n = 0;
+    for (let i = 0; i < parts.length; i++) n += parts[i].length;
+    const o = new Uint8Array(n);
+    let p = 0;
+    for (let i = 0; i < parts.length; i++) { o.set(parts[i], p); p += parts[i].length; }
+    return o;
+  }
+  function pngChunk(type, data) {
+    const typ = new Uint8Array([type.charCodeAt(0), type.charCodeAt(1), type.charCodeAt(2), type.charCodeAt(3)]);
+    const td = concatU8([typ, data]);
+    return concatU8([u32be(data.length), td, u32be(crc32(td))]);
+  }
+  /** rgba: Uint8Array|Uint8ClampedArray (w*h*4) → PNG Uint8Array（RGBA，保留 alpha） */
+  function encodePNG(rgba, w, h) {
+    w = w | 0; h = h | 0;
+    if (w <= 0 || h <= 0) throw new Error('encodePNG: 尺寸無效');
+    const stride = 1 + w * 4;
+    const raw = new Uint8Array(h * stride);
+    for (let y = 0; y < h; y++) {
+      raw[y * stride] = 0;
+      const src = y * w * 4;
+      raw.set(rgba.subarray(src, src + w * 4), y * stride + 1);
+    }
+    const zparts = [new Uint8Array([0x78, 0x01])];
+    let off = 0;
+    while (off < raw.length) {
+      const len = Math.min(65535, raw.length - off);
+      const last = (off + len >= raw.length) ? 1 : 0;
+      const hdr = new Uint8Array(5);
+      hdr[0] = last;
+      hdr[1] = len & 255; hdr[2] = (len >>> 8) & 255;
+      hdr[3] = (~len) & 255; hdr[4] = ((~len) >>> 8) & 255;
+      zparts.push(hdr, raw.subarray(off, off + len));
+      off += len;
+    }
+    zparts.push(u32be(adler32(raw)));
+    const ihdr = new Uint8Array(13);
+    ihdr.set(u32be(w), 0);
+    ihdr.set(u32be(h), 4);
+    ihdr[8] = 8; ihdr[9] = 6;
+    return concatU8([
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      pngChunk('IHDR', ihdr),
+      pngChunk('IDAT', concatU8(zparts)),
+      pngChunk('IEND', new Uint8Array(0))
+    ]);
+  }
+
   /* ------------------------------------------------------------ 輸出 API */
   return {
     GEO, EC_LEVELS, PARAM,
@@ -2085,7 +2153,7 @@
     capacityBytes, packCost, digitsForBytes, packBytes, unpackBytes,
     rsEncode, rsDecode, rsGenPoly,
     headerEncode, headerDecode, ecPlan, wrapVersion,
-    encode, decodeImage, renderCode, toSVG, utf8Decode, utf8Encode, toU8, trimZeros,
+    encode, decodeImage, renderCode, toSVG, encodePNG, utf8Decode, utf8Encode, toU8, trimZeros,
     contrastRatio, relLum, styleContrast, styleStops, styleAlpha, rgbHex,
     _internal: { toGray, downscale, binarize, labelComponents, pickCandidates, envelope, fitRing, solveN, refineAffine, makeMapper, makeAffineMapper, makeHomographyMapper, mapperToH, invert3, mul3, boundaryProfiles, findBoundaryGap, fitHomographyFromProfiles, cyclicRuns, collectPixels, tryHypothesis, headerDecode, capacityBytes }
   };

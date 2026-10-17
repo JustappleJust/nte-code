@@ -1,11 +1,9 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**Phase 8 完成、Phase 9（15 點回饋）也已完成並驗證。** 全部檔案已重建：
-`node app/build-single.mjs` → **276.8 KB（283,4xx bytes）** 單檔版；`docs/` 七張截圖；
-`test/run.js` 49/51（僅 2.5、2 px/u 這兩項既定極限）、`test/style.js` 38/38、`test/photo.js` 13/13；
-自寫 e2e `22 PASS / 0 console 錯誤`；單檔 `file://` 離線 0 外部請求且可自行掃回。
-下一步＝等使用者驗收 Phase 9；若再回饋，直接改 `app/*`（+ `src/sesame-core.js` 的標示幾何）後重建。
+**PNG 導出已修好**（data: URL 下載在 Chrome／預覽 iframe 會被擋；改 Blob URL + `S.encodePNG` 備援）。
+單檔 `node app/build-single.mjs` → **283.3 KB**；`test/style.js` **42/42**（含 encodePNG）。
+Phase 8／9 既有驗收仍有效。下一步＝等使用者驗收本項。
 
 ## Task
 Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資料、任意方向解碼、
@@ -26,7 +24,7 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 
 ## Workspace
 - `src/sesame-core.js`（約 2,100 行，UMD）：GEO(RI 6.0 / INNER_T 2.2 / FRAME_T 2.8 / HEADER 60° / 12 模組)、4–16 圈；
-  `encode`／`decodeImage`／`renderCode`／`toSVG`；`shape:'square'|'circle'|'label'`。
+  `encode`／`decodeImage`／`renderCode`／`toSVG`／`encodePNG`；`shape:'square'|'circle'|'label'`。
   **Phase 9 新增**：模組層 `LABEL_FONT`（Quicksand Bold 輪廓，11 字 `NTEBAGLSMCOD·`，約 17.7 KB 資料）
   → `LF`（upem 1000、cap 700）→ `labelGeometry(str, plateR, gh0)`（回傳已彎曲到單位座標的輪廓；TRACK 0.16，
   弧長上限 1.95 rad ≈ 112°，rC = plate + gh/2 + 0.9，rBase = rC + gh/2，字往圓心長）。
@@ -45,7 +43,8 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
   scan.req.value 白話、footer、band、label.ringText）＋ `SPEC_PATCH` 修正說明頁字串；`dict[lang]['wm.words']`
   是背景三個字（異環|唄果|芝碼／NTE|BAGEL|SESAMECODE／ネバエバ|ベーグル|ゴマコード）。
 - `LICENSE-FONT.txt`：Quicksand（SIL OFL 1.1）授權全文。
-- `app/sesamecode-standalone.html`：276.8 KB 單檔（0 外部請求）。
+- `app/sesamecode-standalone.html`：283.3 KB 單檔（0 外部請求）。
+- PNG 導出：`saveBlob` 用 Blob URL（不再把 `canvas.toDataURL` 直接塞進 `<a href>`）；canvas 壓縮失敗時改走 `S.encodePNG`。
 - `docs/`：ui-generate / ui-label / ui-appearance / ui-scan / ui-spec / ui-light / ui-mobile（1440×950、手機 390×844）。
 - `README.md`：v6 條列、檔案結構、v6 驗證列、標示文字限制說明。
 

@@ -1,7 +1,9 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**最新 UI 修正**：色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示改為與頁首一致的雙圓環，放在圓形藍底。
+**最新 UI 修正**：
+1. 解決下拉選單（`.sel`）展開時被下方卡片（`.box`、`.fields`、`.stage`、`footer` 等）因堆疊上下文（stacking context）遮擋的問題：展開時動態提升祖先容器之 z-index（`:has(.sel.open)` 與 `.has-open-sel` 雙層機制），並支援視窗邊界自動向上彈出（`.open-up`），選單清單改用不透明背景與陰影，保證所有選項皆可見且能點擊。
+2. 頁尾底部的 `NTE · BAGEL · SESAMECODE` 色帶改回灰色（深淺主題分別採用 `--bar-alt` / `--on-bar-alt`），不再與頂欄同樣為藍色；色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示為雙圓環圓形藍底。
 PNG 導出仍使用 Blob URL + `S.encodePNG` 備援；單檔由 `node app/build-single.mjs` 產生。
 Phase 8／9 既有驗收仍有效。
 

@@ -39,6 +39,40 @@
 
   /* ---------------------------------------------------- 自訂下拉選單
    * 保留原生 <select>（隱藏）作為資料來源與事件來源，畫面由 .sel 呈現。 */
+  function closeAllSel() {
+    document.querySelectorAll('.sel.open').forEach(x => {
+      x.classList.remove('open', 'open-up');
+      const b = x.querySelector('.sel-btn');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+    document.querySelectorAll('.has-open-sel').forEach(el => el.classList.remove('has-open-sel'));
+  }
+
+  function markSelAncestors(node) {
+    let p = node.parentElement;
+    while (p && p !== document.body) {
+      if (p.classList.contains('box') || p.classList.contains('stage') ||
+          p.classList.contains('fields') || p.tagName === 'LABEL' ||
+          p.classList.contains('srow') || p.classList.contains('scan-actions') ||
+          p.classList.contains('top') || p.classList.contains('app')) {
+        p.classList.add('has-open-sel');
+      }
+      p = p.parentElement;
+    }
+  }
+
+  function positionSelList(node, btn, list) {
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const listHeight = Math.min(260, Math.max(120, (list.children.length || 4) * 36));
+    if (spaceBelow < Math.min(listHeight + 16, 220) && spaceAbove > spaceBelow) {
+      node.classList.add('open-up');
+    } else {
+      node.classList.remove('open-up');
+    }
+  }
+
   function initSel(node) {
     const src = document.getElementById(node.dataset.for);
     if (!src) return;
@@ -54,32 +88,52 @@
     };
     node._refresh = refresh;
     refresh();
-    const close = () => { node.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+
     const pick = (i) => {
       if (i < 0 || i >= src.options.length) return;
       src.selectedIndex = i;
       src.dispatchEvent(new Event('change', { bubbles: true }));
-      close();
+      closeAllSel();
       btn.focus();
     };
+
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const willOpen = !node.classList.contains('open');
-      document.querySelectorAll('.sel.open').forEach(x => x.classList.remove('open'));
-      node.classList.toggle('open', willOpen);
-      btn.setAttribute('aria-expanded', String(willOpen));
+      const isAlreadyOpen = node.classList.contains('open');
+      closeAllSel();
+      if (!isAlreadyOpen) {
+        positionSelList(node, btn, list);
+        node.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        markSelAncestors(node);
+        const selLi = list.querySelector('[aria-selected="true"]');
+        if (selLi) selLi.scrollIntoView({ block: 'nearest' });
+      }
     });
+
     btn.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         pick(src.selectedIndex + (e.key === 'ArrowDown' ? 1 : -1));
-      } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.classList.toggle('open'); }
-      else if (e.key === 'Escape') close();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        btn.click();
+      } else if (e.key === 'Escape') {
+        closeAllSel();
+      }
     });
-    list.addEventListener('click', (e) => { const li = e.target.closest('li'); if (li) pick(+li.dataset.i); });
-    document.addEventListener('click', close);
+
+    list.addEventListener('click', (e) => {
+      const li = e.target.closest('li');
+      if (li) pick(+li.dataset.i);
+    });
+
     src.addEventListener('change', refresh);
   }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.sel')) closeAllSel();
+  });
+  window.addEventListener('resize', closeAllSel, { passive: true });
   const refreshSelects = () => document.querySelectorAll('.sel').forEach(n => n._refresh && n._refresh());
 
   /* ---------------------------------------------------- 語言 + 主題 */

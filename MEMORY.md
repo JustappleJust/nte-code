@@ -76,7 +76,17 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 - 對照圖 `docs/svg-whitespace-before-after.png`：上排修正前（三種外形都是空白）、下排修正後。
 - README：API 註解改為輪廓 `<path>`（不再是 `<textPath>`）、留白列補 SVG viewBox 說明、
   標示墊 4.2u → 4.9u、style 測試 42 → 47、新增 SVG 導出比對一列。
-- 注意：PR #7（×64 換算派）已被 #8 revert；本輪改用「viewBox 直接採 u」的作法，程式更短且與 `renderCode` 同尺度。
+- **使用者對 PR #7 的判斷是「無效」並在 6 分鐘內 revert（#8）**。實測 #7 的程式本身是有效的
+  （光柵化後內容滿版），所以「無效」幾乎確定是**頁面還在跑舊檔**：舊分頁把舊 JS 留在記憶體、
+  GitHub Pages 對 HTML／JS 有約 10 分鐘快取（#7 部署 13:47:20 完成、13:52 就 revert）。
+  重新做的 PR **#10** 因此加了「可驗證性」：
+  - `app/index.html` 的 `<html data-build="…">` ＋ 四個資源 `?v=…`（快取破除）
+  - 頁尾一行低調的 `build …`（`#build-note`，四語系共用、非文案宣稱）＋ `console.info`
+  - `app/build-single.mjs` 改用 regex 吃掉 `?v=`，找不到標籤就**拋錯**（避免單檔打包靜默失效）
+  - 真瀏覽器 E2E（headless Chromium，`@sparticuz/chromium` + `puppeteer-core`，`/tmp/al2023/lib`）：
+    開發版與 `file://` 單檔點「導出 SVG」→ viewBox 半寬 36.9、墨跡佔 98.8%（revert 後的 main 為 3.0%）
+- 給下一個 session：**改動任何前端資源時要一起換 `data-build` 與 `?v=`**；使用者若說「沒效果」，
+  先請他看頁尾 build 或重新整理，再談程式。
 
 ## 第十一輪（相機凍結，使用者 1 點）
 「完全掃描頁」的「掃描效果」開啟時，掃到芝碼要**暫時凍結相機畫面**，動畫完成後（**不用按「再掃一次」**）

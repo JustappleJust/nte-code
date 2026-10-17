@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-build="20261017-a">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -414,6 +414,9 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
 .foot-lead{font-size:15px;color:var(--ink-2);max-width:820px;line-height:1.7;margin-top:6px}
 .foot-lead b{color:var(--ink)}
 .foot-note{font-size:12px;color:var(--dim);max-width:820px;line-height:1.8;margin-top:6px}
+/* 建置標記：只用來判斷瀏覽器是不是還在跑舊檔，刻意做得低調 */
+.foot-build{font-size:11px;letter-spacing:.04em;opacity:.72;font-variant-numeric:tabular-nums;margin-top:2px}
+.foot-build:empty{display:none}
 
 /* --------------------------------------------------------------- Toast */
 .toasts{position:fixed;right:14px;bottom:14px;z-index:80;display:flex;flex-direction:column;gap:7px;max-width:min(340px,86vw)}
@@ -885,6 +888,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
       <div class="foot-lead" data-i18n-html="footer"></div>
       <div class="foot-note" data-i18n="footer.fine"></div>
       <div class="foot-note"><span data-i18n="disclaimer.body"></span></div>
+      <div class="foot-note foot-build" id="build-note"></div>
     </div>
   </div>
 </footer>
@@ -6395,6 +6399,17 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     document.querySelectorAll('.sel').forEach(n => n._refresh && n._refresh());
     if (lastGeom) generate();
   });
+
+  /* ---------------------------------------------------- 建置標記
+   * 頁面的 data-build 與各資源的 ?v= 一起更新（見 app/index.html）。
+   * 用途：合併後若還看到舊畫面，看頁尾這行就能判斷瀏覽器是不是還在跑舊檔；
+   * 舊分頁會把 JS 留在記憶體裡，必須重新整理（Pages 對 HTML/JS 另有 10 分鐘快取）。 */
+  const BUILD = document.documentElement.getAttribute('data-build') || '';
+  if (BUILD) {
+    const bn = $('build-note');
+    if (bn) bn.textContent = 'build ' + BUILD;
+    if (window.console && console.info) console.info('[SesameCode] build ' + BUILD);
+  }
 
   /* ---------------------------------------------------- 初始化 */
   document.querySelectorAll('.sel').forEach(initSel);

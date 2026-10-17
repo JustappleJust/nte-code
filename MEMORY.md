@@ -85,3 +85,30 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 6. 點範例不再跳 toast。
 7. 面板半透明：`--panel:rgba(...,.72)`＋`backdrop-filter:blur(10px)`。
 8. 色票只寫配色名（`preset.classic`＝經典…、`grad.*`＝霓虹／冰晶…）。
+
+## 第十輪（完全掃描器「掃描效果」，使用者 4 點）
+1. **切換開關預設開**：`#full` 的 `.fs-foot` 加方形滑鈕開關（`.swx`，全站直角），`role="switch"`、
+   `aria-checked`，存在 `localStorage['sesame.fsfx']`（'0' 關／預設開）；四語系 `fs.fx`／`fs.fx.t`。
+2. **掃描成功效果**（`app/app.js` 的 `fxPlay(hit, r)`，`#fs-fx` canvas 疊在影片上）：
+   - ① 亮度環過內外環一圈：沿橢圓仿射（`geometry.cx/cy/A/B/phi`）以 `lighter` 合成掃過
+     外框 `metaMid(rings)` 與內環 `(INNER_RI+RI)/2`，亮頭＋拖尾＋完成整圈閃光。
+   - ② 芝麻波浪：依 `encode` 的 cells（`r, deg, state`）由內往外＋角度微起伏排延遲，
+     每顆以 SA/SB 橢圓放大再縮小（1→1.85→1）＋光核；同心波前圓同步擴散。
+   - ③ 乾淨複製：`S.encode(r.bytes,{version,ecLevel})` 重編 → `renderCode({shape:'circle',rotDeg:0})`，
+     顏色由 `fxSampleColors` 從原圖取樣（墨/底各取亮度分群平均；底色用「亮度～設計座標」線性回歸
+     求漸層方向→`bgStyle{from,to,angle}`）；繪製時以仿射對上原圖角度形變（設計0°方向 = `baseDeg+phi`），
+     掃描線自上而下顯影＋lift pop。場景 vignette 讓複製品浮出。
+   - ④ 往下飛行變幻：圓形（圓角矩形 clip 半徑 r→0）→ 結果面板矩形，代碼縮影攤平（形變→正圓）淡出，
+     面板底色長出；**圓環→按鈕**（下緣弧 quadraticCurveTo 攤平成按鈕列線）、**芝麻→文字**（8 顆小方點
+     散入文字列）；fp≥0.72 時結果面板 `.show` 進場（文字 blur→清晰、按鈕 nth-child 依序彈入）。
+   - 時序約 3.2s：sweep 80–900、wave 330–1430、reveal 1260–1880、lift 1900、fly 2120–3000。
+3. **圖片掃描背景**：`#fs-bg` 持久畫布鋪來源影像（cover-fit），fx 結束不清除（像場景）；
+   相機模式由 live 畫面當背景。`fs-hint` 掃到後隱藏（避免透出結果面板），再掃一次還原。
+4. **無障礙／降級**：`prefers-reduced-motion` 直接出結果；關閉開關＝原本行為；`fxStop(revealNow)`
+   可中斷並立刻顯示結果；closeFull／fs-again／beforeunload 皆清 fx 與背景。
+- 驗證：自製照片場景（斜 23°、漸層卡）經 `#fs-file` 全流程 e2e（亮/暗主題、reduced-motion、
+  開關持久化、無 console 錯誤）；`baseDeg+phi≈23.3°` 對上渲染旋轉，仿射公式與核心 `makeMapper` 一致。
+- 修正：`test/run.js`／`style.js`／`debug-geom.js` 的 `/home/user/sesame-code/test/out` 硬編碼改 `__dirname`；
+  新增 `.gitignore`（`test/out/`）。run.js 結果 49 過／2 失敗（2.5、2 px/u 為既定失敗）。
+- 測試工具：本輪無 Puppeteer 快取，改用 npm `@sparticuz/chromium`（內嵌 chromium.br＋al2023.tar.br
+  解到 `/tmp/al2023`，需 `LD_LIBRARY_PATH=/tmp/al2023/lib`）＋ `puppeteer-core`，放在 repo 外 `/home/user/pptr`。

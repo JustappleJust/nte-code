@@ -4,9 +4,10 @@
 const S = require('../src/sesame-core.js');
 const { encodePNG } = require('./png.js');
 const fs = require('fs');
+const path = require('path');
 
 const SAVE = process.argv.includes('--save');
-const OUT = '/home/user/sesame-code/test/out';
+const OUT = path.join(__dirname, 'out');
 if (SAVE) fs.mkdirSync(OUT, { recursive: true });
 
 let pass = 0, fail = 0;

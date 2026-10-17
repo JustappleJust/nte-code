@@ -414,19 +414,46 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
 .fs-guide{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   height:min(60vh,60vw);width:min(60vh,60vw);border:2px dashed #9fd0ff;border-radius:50%;pointer-events:none}
 .fs-hint{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-family:var(--mono);font-size:12px;
-  letter-spacing:.06em;color:#e7eef5;text-shadow:0 1px 10px rgba(0,0,0,.85)}
-.fs-flash{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:rgba(87,208,150,.34)}
+  letter-spacing:.06em;color:#e7eef5;text-shadow:0 1px 10px rgba(0,0,0,.85);z-index:2}
+.fs-fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;display:block}
+.fs-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;display:block}
+.fs-flash{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:rgba(87,208,150,.34);z-index:4}
 .fs-flash.on{opacity:1;transition:none}
-.fs-top{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;gap:9px}
+.fs-top{position:absolute;top:10px;left:10px;right:10px;display:flex;align-items:center;gap:9px;z-index:6}
 .fs-close{width:36px;height:36px;padding:0;background:rgba(6,10,16,.7);border:1px solid var(--line-2);color:#fff}
 .fs-close svg{width:19px;height:19px}
 .fs-status{margin-left:auto;background:rgba(6,10,16,.7)}
 .fs-result{position:absolute;left:10px;right:10px;bottom:10px;background:var(--panel);border:1px solid var(--line-2);
-  padding:12px;display:flex;flex-direction:column;gap:10px}
+  padding:12px;display:flex;flex-direction:column;gap:10px;z-index:6}
 .fs-result[hidden]{display:none}
 .fs-payload{font-family:var(--mono);font-size:13.5px;word-break:break-word;max-height:22vh;overflow:auto}
 .fs-actions{display:flex;gap:8px;flex-wrap:wrap}
 .fs-foot{flex:0 0 auto;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+
+/* 掃描效果：結果卡「飛入」— 圓形芝碼變結果面板、芝麻變文字、圓環變按鈕 */
+.fs-result.fx-pending{opacity:0;pointer-events:none}
+.fs-result.show{animation:fsResIn .42s cubic-bezier(.19,.88,.28,1) both}
+@keyframes fsResIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.fs-result.show .fs-payload{animation:fsTxtIn .55s cubic-bezier(.19,.88,.28,1) .1s both}
+@keyframes fsTxtIn{from{opacity:0;filter:blur(7px);letter-spacing:.34em;transform:translateY(5px)}to{opacity:1;filter:blur(0);letter-spacing:normal;transform:none}}
+.fs-result.show .fs-actions button{animation:fsBtnIn .38s cubic-bezier(.19,.88,.28,1) both}
+.fs-result.show .fs-actions button:nth-child(1){animation-delay:.16s}
+.fs-result.show .fs-actions button:nth-child(2){animation-delay:.23s}
+.fs-result.show .fs-actions button:nth-child(3){animation-delay:.3s}
+.fs-result.show .fs-actions button:nth-child(4){animation-delay:.37s}
+@keyframes fsBtnIn{from{opacity:0;transform:translateY(12px) scaleY(.55)}to{opacity:1;transform:none}}
+
+/* 掃描效果開關（方形滑鈕，維持全站直角風格） */
+.swx{display:inline-flex;align-items:center;gap:9px;background:rgba(6,10,16,.7);border:1px solid var(--line-2);
+  color:#e7eef5;padding:8px 12px;cursor:pointer;flex:0 0 auto;transition:border-color .12s,background .12s}
+.swx:hover{border-color:#9fd0ff;background:rgba(10,16,24,.82)}
+.swx .swx-tr{width:32px;height:16px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);
+  position:relative;flex:0 0 auto;transition:background .18s,border-color .18s}
+.swx .swx-kn{position:absolute;left:1px;top:1px;width:12px;height:12px;background:#9aa4ae;
+  transition:transform .18s ease,background .18s}
+.swx[aria-checked="true"] .swx-tr{background:var(--bar);border-color:var(--bar)}
+.swx[aria-checked="true"] .swx-kn{transform:translateX(16px);background:#fff}
+.swx:focus-visible{outline:2px solid #9fd0ff;outline-offset:2px}
 
 /* ------------------------------------------------------------- 行動版 */
 @media(max-width:1000px){

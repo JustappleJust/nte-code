@@ -9,6 +9,7 @@
   --line:rgba(255,255,255,.16); --line-2:rgba(255,255,255,.3); --line-3:rgba(255,255,255,.07);
   --ink:#f4f6f8; --ink-2:#c6cdd4; --muted:#9aa4ae; --dim:#828d98;
   --blue:#49a8f5; --blue-d:#2b82cc; --bar:#1c78c6; --bar-2:#176cae;
+  --bar-alt:#1e242c; --on-bar-alt:var(--ink-2);
   --mag:#c2185b; --mag-2:#a5124c;
   --warn:#f0ac46; --ok:#57d096; --bad:#f2646a;
   --on-blue:#ffffff; --on-mag:#ffffff;
@@ -24,6 +25,7 @@ html[data-theme="light"]{
   --line:rgba(12,18,26,.2); --line-2:rgba(12,18,26,.42); --line-3:rgba(12,18,26,.08);
   --ink:#0a0f15; --ink-2:#2b333c; --muted:#4d5763; --dim:#5d6672;
   --blue:#0d63b0; --blue-d:#0a4e8c; --bar:#0d63b0; --bar-2:#0a4e8c;
+  --bar-alt:#d8dde4; --on-bar-alt:var(--ink-2);
   --mag:#b3144f; --mag-2:#8f0f40;
   --warn:#8a5a00; --ok:#0b6b45; --bad:#b3262c;
   --on-blue:#ffffff; --on-mag:#ffffff;
@@ -77,6 +79,8 @@ html[data-theme="light"] .fx .wm{opacity:.085}
 .brand h1{font-size:20px;white-space:nowrap}
 .tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex:0 0 auto}
 .band{background:var(--bar);color:var(--on-blue);border-top:1px solid rgba(255,255,255,.18);overflow:hidden}
+.band.alt,footer .band{background:var(--bar-alt);color:var(--on-bar-alt);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+footer .band{border-top:0}
 .band-in{max-width:1440px;margin:0 auto;padding:4px 20px;display:block;overflow:hidden;
   font-family:var(--narrow);font-style:italic;font-weight:700;font-size:12px;letter-spacing:.2em;
   text-transform:uppercase;white-space:nowrap;text-overflow:clip}

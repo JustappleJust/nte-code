@@ -1,7 +1,7 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**最新 UI 修正**：色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示改為與頁首一致的雙圓環，放在圓形藍底。
+**最新 UI 修正**：頁尾底部的 `NTE · BAGEL · SESAMECODE` 色帶改回灰色（深淺主題分別採用 `--bar-alt` / `--on-bar-alt`），不再與頂欄同樣為藍色；色帶依各自容器寬度重複至填滿，縮放時自動重算且不使用跑馬燈；網站圖示為雙圓環圓形藍底。
 PNG 導出仍使用 Blob URL + `S.encodePNG` 備援；單檔由 `node app/build-single.mjs` 產生。
 Phase 8／9 既有驗收仍有效。
 

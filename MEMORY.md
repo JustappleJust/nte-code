@@ -1,8 +1,9 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**最新 SVG 修正（第十二輪）**：`toSVG` 的 viewBox 與圖形座標不同尺度（見下），已修正為「每 1u = 64 個 viewBox 單位」全場一致；
-PNG／SVG 構圖逐像素一致（resvg 比對 IoU ≥ 0.986），`test/style.js` §6b 為防回歸專用檢查（**64 通過 / 0 失敗**）。
+**最新 SVG 修正（第十二輪／第十三輪重新落地）**：`toSVG` 的 viewBox 與圖形座標不同尺度（見下），已修正為「每 1u = 64 個 viewBox 單位」全場一致；
+PNG／SVG 構圖逐像素一致（resvg 比對 IoU ≥ 0.986），`test/style.js` §6b 為防回歸專用檢查（**68 通過 / 0 失敗**）。
+PR #7 曾被 PR #8 整包撤回（main 一度回到 `d0d9fb4`，留白復發）；第十三輪已重新落地並補上旋轉角／不透明度斷言。
 
 **最新 UI 修正**：
 1. 解決下拉選單（`.sel`）展開時被下方卡片（`.box`、`.fields`、`.stage`、`footer` 等）因堆疊上下文（stacking context）遮擋的問題：展開時動態提升祖先容器之 z-index（`:has(.sel.open)` 與 `.has-open-sel` 雙層機制），並支援視窗邊界自動向上彈出（`.open-up`），選單清單改用不透明背景與陰影，保證所有選項皆可見且能點擊。
@@ -91,6 +92,26 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
     （舊檔 `decodeImage` → 「找不到外框環」，等於那時的 SVG 成品根本掃不起來）。
 - README 順手修掉兩處過期文件：宣稱「SVG 以 `<textPath>` 輸出文字環」×2（第 56 行與 API 範例），實為內嵌字廓的
   `<path fill-rule="nonzero">`；`docs/` 說明也補上範例 SVG 與前後對照圖。
+
+## 第十三輪（SVG 留白修正重新落地 + 測試補強）
+- 背景：PR #7（merge `406196c`）合併後，PR #8（`arena/5ebb23d9`，revert `bbda324`、merge `99b28b5`）於同日 13:52
+  以 `git revert -m 1 406196c` **整包撤回**；main 回到 `d0d9fb4`，巨大留白**復發**（8 圈 label 的 viewBox 邊長仍是
+  2643.2，圖形卻只有 34.4u 尺度，內容僅佔半寬 2.6%；`test/style.js` 也退回 42 項）。本分支原本停在撤回前的
+  `406196c`，先 `git merge --ff-only origin/main`（→ `99b28b5`）再重做。
+- 做法：`git revert --no-commit bbda324`（撤回那個撤回）→ 工作樹與 PR #7 完全相同（`git diff 406196c` 為空），
+  核心、§6b、單檔、README、MEMORY、`docs/svg-whitespace-before-after.png` 一併回來；`node app/build-single.mjs`
+  重建後無 diff。
+- `docs/example-1/2.svg` 以 `S.toSVG(encode(url,{ecLevel:1}), {px:1024,shape:'label',marginU:2,ringText:'NTE · BAGEL'})`
+  重新產生，與檔案**逐位元組相同**（8 圈／5 圈）；resvg 光柵化 → `decodeImage` 可掃回原 URL
+  （`…/app/index.html`、`https://discord.gg/GtCdyxxWSN`）。
+- 測試補強（原 §6b 抓不到、但原 commit message 警告過的兩個地雷）：
+  1. 芝麻旋轉角維持角度尺度（本例最大 483°；若誤用 `nu()` 會變 30,912°）；
+  2. 旋轉中心＝橢圓中心（皆 viewBox 尺度）、半徑＝SA/SB·64 且落在畫布內；
+  3. `fill-opacity` 必須是 0–1（誤乘會變 `64.000`／`22.400`）。
+  - 反證：把 `n()` 直接改成 ×64 的「偷懶修法」跑同一份測試 → 56 過／12 失敗，其中旋轉角與 `fill-opacity`
+    正是新斷言抓到的（舊 §6b 只看外接半徑，對這兩種錯完全無感）。
+- 驗收：`node test/style.js` **68 通過 / 0 失敗**；`node test/run.js` 49/2、`node test/photo.js` 13/0
+  （與修正前相同，2 項為既有的 2.5／2 px/u 低解析度）；resvg 與 `renderCode` 的 9 組 IoU 0.989–0.994。
 
 ## Actions Taken（本輪）
 1. fontTools 取 Quicksand wght700 → RDP(ε2.5) 輪廓 → 嵌入核心（首版 26 KB，簡化後 17.7 KB）。

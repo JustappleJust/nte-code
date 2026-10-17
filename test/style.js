@@ -223,6 +223,33 @@ const vbOf = svg => /viewBox="([^"]+)"/.exec(svg)[1].split(' ').map(Number);
   const gm = /<linearGradient[^>]*x1="(-?[\d.]+)"[^>]*y1="(-?[\d.]+)"[^>]*x2="(-?[\d.]+)"[^>]*y2="(-?[\d.]+)"/.exec(gd);
   check('漸層跨度 = viewBox 邊長（不被縮放錯誤拉偏）',
     !!gm && Math.abs(Math.abs(+gm[3] - +gm[1]) - vbOf(gd)[2]) < 0.02, gm && `span ${Math.abs(gm[3] - gm[1]).toFixed(1)}`);
+  /* 芝麻橢圓的另外兩個地雷：旋轉角必須留在「角度」尺度（nu() 只能給座標），
+     旋轉中心與半徑則必須是 viewBox 尺度。只量外接半徑抓不到這兩種錯。 */
+  const sqSvg = S.toSVG(geom, { px: 512, marginU: 2 });
+  const halfSq = vbOf(sqSvg)[2] / 2;
+  const ellRe = /<ellipse cx="(-?[\d.]+)" cy="(-?[\d.]+)" rx="([\d.]+)" ry="([\d.]+)"[^>]*transform="rotate\((-?[\d.]+) (-?[\d.]+) (-?[\d.]+)\)"/g;
+  const litCells = geom.cells.filter(c => c.state).length;
+  let nEll = 0, badAng = 0, badCtr = 0, badSize = 0, maxAng = 0;
+  for (const em of sqSvg.matchAll(ellRe)) {
+    nEll++;
+    const cx = +em[1], cy = +em[2], rx = +em[3], ry = +em[4];
+    const ang = +em[5], tcx = +em[6], tcy = +em[7];
+    maxAng = Math.max(maxAng, ang);
+    if (!(ang >= 0 && ang < 720)) badAng++;              // 誤用 nu() 會變成數千度
+    if (Math.abs(tcx - cx) > 0.01 || Math.abs(tcy - cy) > 0.01) badCtr++;
+    if (Math.abs(rx - S.GEO.SA * UPX) > 0.01 || Math.abs(ry - S.GEO.SB * UPX) > 0.01
+      || Math.hypot(cx, cy) + Math.max(rx, ry) > halfSq + 0.01) badSize++;
+  }
+  check('芝麻旋轉角維持角度尺度（未被 64 倍化）',
+    nEll === litCells && badAng === 0,
+    `${nEll}/${litCells} 顆，最大 ${maxAng.toFixed(1)}°（若 ×64 會是 ${(maxAng * 64).toFixed(0)}°）`);
+  check('芝麻旋轉中心 = 橢圓中心（皆為 viewBox 尺度）', badCtr === 0, badCtr ? `${badCtr} 顆不一致` : '');
+  check('芝麻半徑 = SA/SB·64 且落在畫布內', badSize === 0, badSize ? `${badSize} 顆超出` : '');
+  // fill-opacity 也是「不能被 UPX 乘到」的數值（錯的話會變成 64.000 → 全部不透明）
+  const ops = [...S.toSVG(geom, { px: 512, inkStyle: { from: [0, 0, 0], alpha: 0.5 }, bgStyle: { from: [255, 255, 255], alpha: 0.35 } })
+    .matchAll(/fill-opacity="([\d.]+)"/g)].map(m => +m[1]);
+  check('fill-opacity 為 0–1 的比例值（未被倍率污染成 64.000）',
+    ops.length >= 2 && ops.every(v => v >= 0 && v <= 1), [...new Set(ops)].join(' / '));
   // 留白為 0 時內容正好滿版
   const tight = S.toSVG(geom, { px: 512, marginU: 0 });
   check('marginU = 0 時內容滿版（無殘留空白）',

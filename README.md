@@ -23,8 +23,8 @@
 
 - 芝碼編輯器頁面：
 ![芝碼編輯器](docs/example-1.png)
-- 我的 Discord 伺服器：
-![我的 Discord 伺服器](docs/example-2.png)
+- 蘋果汁咖啡廳 Discord 伺服器：
+![蘋果汁咖啡廳 Discord 伺服器](docs/example-2.png)
 
 ---
 

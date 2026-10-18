@@ -1,7 +1,13 @@
 # MEMORY — 芝碼 SesameCode（工作快照）
 
 ## Current State
-**最新修正（SVG 巨大留白）**：`toSVG` 的座標系一度混用「單位 u」與「×64 縮放」——路徑座標是 u，
+**最新更新（第十三輪：支援 24 圈與 4 顆芝麻內容長度標示）**：
+1. 最大圈數擴充至 24 圈（`GEO.MAX_VERSION = 24`，L 級最大容量提升至 477 bytes）。
+2. 資料格式直接更新：主體格點（`digits`）最前安排 4 顆芝麻作為內容長度標示（5 進位，5⁴ = 625，表示 0–624 bytes），後續格點存放 Reed–Solomon codeword；解碼端直接還原精確長度，不再遺失二進位末尾 0x00，字串亦無需依賴 `trimZeros`。
+3. 範例圖片 `docs/example-1.png` 與 `docs/example-2.png` 重新導出，採用新格式並維持範本配色（`g.mint` 與 `g.neon`，label 外形），解讀測試均 100% 通過。
+4. 前端資源快取破除更新至 `20261018-a`，單檔 `app/sesamecode-standalone.html` 同步重打。
+
+**既有修正（SVG 巨大留白）**：`toSVG` 的座標系一度混用「單位 u」與「×64 縮放」——路徑座標是 u，
 viewBox／背景矩形／底盤半徑卻乘了 64（且把半寬當成全寬），導致內容只佔畫布 1/32、四邊出現大片空白，
 `circle` 外形也因為 clip 半徑是畫布半寬的 2 倍而裁不掉四角。
 現在 viewBox 全程用 u：`v2 = 2·S`（全寬）、`plateR = o.plateU ?? R6 + margin`；viewBox 緊貼內容
@@ -34,7 +40,7 @@ Web 芝碼（唄果 bagel-barcode）產生器＋掃描器：任意二進位資�
 - 來源聲明不獨立成標題、不放目錄；不得用 AI／生成式等字眼。
 
 ## Workspace
-- `src/sesame-core.js`（約 2,100 行，UMD）：GEO(RI 6.0 / INNER_T 2.2 / FRAME_T 2.8 / HEADER 60° / 12 模組)、4–16 圈；
+- `src/sesame-core.js`（約 2,100 行，UMD）：GEO(RI 6.0 / INNER_T 2.2 / FRAME_T 2.8 / HEADER 60° / 12 模組)、4–24 圈；
   `encode`／`decodeImage`／`renderCode`／`toSVG`／`encodePNG`；`shape:'square'|'circle'|'label'`。
   **Phase 9 新增**：模組層 `LABEL_FONT`（Quicksand Bold 輪廓，11 字 `NTEBAGLSMCOD·`，約 17.7 KB 資料）
   → `LF`（upem 1000、cap 700）→ `labelGeometry(str, plateR, gh0)`（回傳已彎曲到單位座標的輪廓；TRACK 0.16，

@@ -101,10 +101,29 @@ console.log('\n=== 8. 二進位資料 ===');
   const enc = S.encode(bytes, { ecLevel: 0 });
   const img = S.renderCode(enc, { pxPerUnit: 10 });
   const dec = S.decodeImage(img, {});
-  const same = dec.ok && dec.bytes.length >= 64 && bytes.every((b, i) => dec.bytes[i] === b);
+  const same = dec.ok && dec.bytes.length === 64 && bytes.every((b, i) => dec.bytes[i] === b);
   check('64 bytes 隨機二進位（含 0x00/0xFF）', same, dec.ok ? '' : dec.error);
   console.log('  文字欄位（非 UTF-8 應為 null）:', dec.ok ? String(dec.text) : '-');
   fs.writeFileSync(`${OUT}/binary.png`, encodePNG(img.data, img.width, img.height));
+}
+
+console.log('\n=== 8c. 4 顆芝麻長度標示 (~625) ===');
+{
+  let lenOk = true;
+  for (let l = 0; l < 625; l++) {
+    const d = S.encodeLength(l);
+    if (d.length !== 4 || d.some(x => x < 0 || x > 4)) lenOk = false;
+    const l2 = S.decodeLength(d);
+    if (l2 !== l) lenOk = false;
+  }
+  check('4 顆芝麻 (5 進位) 0~624 長度正確還原', lenOk);
+
+  const trailingZeroBin = new Uint8Array([0x12, 0x34, 0x00, 0x00]);
+  const encTZ = S.encode(trailingZeroBin, { ecLevel: 0 });
+  const imgTZ = S.renderCode(encTZ, { pxPerUnit: 10 });
+  const decTZ = S.decodeImage(imgTZ, {});
+  const tzSame = decTZ.ok && decTZ.bytes.length === 4 && trailingZeroBin.every((b, i) => decTZ.bytes[i] === b);
+  check('二進位尾端 0x00 保留完整長度不被截斷', tzSame, decTZ.ok ? `長度 ${decTZ.bytes.length}` : decTZ.error);
 }
 
 console.log('\n=== 8b. 最大容量（高密度芝碼） ===');

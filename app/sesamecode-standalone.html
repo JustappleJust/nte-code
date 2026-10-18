@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hant" data-build="20261017-a">
+<html lang="zh-Hant" data-build="20261018-a">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1893,7 +1893,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   <li><b>內框</b>：外緣 6u、內孔 3.8u 的圓環，用來對準圓心與比例。</li>
 </ul>
 <h3>圈數與容量</h3>
-<p>沒有版本號。圈數由<b>內框與外框的半徑比例</b>決定：比例越大圈數越多、能放的內容也越多，4 圈約 45 bytes，16 圈約 230 bytes。「進階選項」裡可以指定圈數與容錯等級，平常交給自動就好。</p>
+<p>沒有版本號。圈數由<b>內框與外框的半徑比例</b>決定：比例越大圈數越多、能放的內容也越多，4 圈約 24 bytes，24 圈約 477 bytes。「進階選項」裡可以指定圈數與容錯等級，平常交給自動就好。</p>
 <h3>每顆芝麻的資訊量</h3>
 <p>芝麻是 2u × 1u 的橢圓，相對於該處的切線可以轉 0° / 45° / 90° / 135°，再加上「沒有芝麻」，共 <b>5 種狀態</b>，每格 log<sub>2</sub>5 ≈ 2.32 bit。</p>
 <h3>三種外形</h3>
@@ -1968,7 +1968,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   <li><b>内框</b>：外缘 6u、内孔 3.8u 的圆环，用来对准圆心与比例。</li>
 </ul>
 <h3>圈数与容量</h3>
-<p>没有版本号。圈数由<b>内框与外框的半径比例</b>决定：比例越大圈数越多、能放的内容也越多，4 圈约 45 bytes，16 圈约 230 bytes。「高级选项」里可以指定圈数与纠错等级，平常交给自动就好。</p>
+<p>没有版本号。圈数由<b>内框与外框的半径比例</b>决定：比例越大圈数越多、能放的内容也越多，4 圈约 24 bytes，24 圈约 477 bytes。「高级选项」里可以指定圈数与纠错等级，平常交给自动就好。</p>
 <h3>每颗芝麻的信息量</h3>
 <p>芝麻是 2u × 1u 的椭圆，相对于该处的切线可以转 0° / 45° / 90° / 135°，再加上「没有芝麻」，共 <b>5 种状态</b>，每格 log<sub>2</sub>5 ≈ 2.32 bit。</p>
 <h3>三种外形</h3>
@@ -2043,7 +2043,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   <li><b>Inner frame</b>: a ring from 6u to a 3.8u bore, used to find the centre and the scale.</li>
 </ul>
 <h3>Rings and capacity</h3>
-<p>There are no version numbers. The ring count comes from the <b>radius ratio between the inner and outer frame</b>: the larger the ratio, the more rings and the more room. Four rings hold about 45 bytes, sixteen about 230 bytes. Advanced options let you pin the ring count and the error-correction level.</p>
+<p>There are no version numbers. The ring count comes from the <b>radius ratio between the inner and outer frame</b>: the larger the ratio, the more rings and the more room. Four rings hold about 24 bytes, twenty-four about 477 bytes. Advanced options let you pin the ring count and the error-correction level.</p>
 <h3>Bits per seed</h3>
 <p>A seed is a 2u x 1u ellipse that can sit at 0°, 45°, 90° or 135° to the local tangent, plus the empty state — <b>5 states</b> per slot, log<sub>2</sub>5 ≈ 2.32 bit.</p>
 <h3>Three shapes</h3>
@@ -2118,7 +2118,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   <li><b>内枠</b>：外縁 6u・内孔 3.8u のリング。中心と縮尺の基準になります。</li>
 </ul>
 <h3>リング数と容量</h3>
-<p>バージョン番号はありません。リング数は<b>内枠と外枠の半径比</b>で決まり、比が大きいほど多く入ります（4 リングで約 45 バイト、16 リングで約 230 バイト）。詳細設定でリング数と誤り訂正を固定できます。</p>
+<p>バージョン番号はありません。リング数は<b>内枠と外枠の半径比</b>で決まり、比が大きいほど多く入ります（4 リングで約 24 バイト、24 リングで約 477 バイト）。詳細設定でリング数と誤り訂正を固定できます。</p>
 <h3>ゴマ一粒の情報量</h3>
 <p>ゴマは 2u × 1u の楕円で、接線に対して 0° / 45° / 90° / 135° に回せます。空きも含めて <b>5 状態</b>、1 マスあたり log<sub>2</sub>5 ≈ 2.32 bit。</p>
 <h3>三つのかたち</h3>
@@ -2530,7 +2530,7 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     META_MINW: 2,       // 每段長度 ∈ {2,3,4} 格
     META_MAXW: 4,
     MIN_VERSION: 4,     // 支援的圈數（格數由內外環比例自動決定，非版本號）
-    MAX_VERSION: 16     // 上限受「內外緣半徑比」的可分辨度限制（相鄰圈數差距約 0.0024）
+    MAX_VERSION: 24     // 上限受「內外緣半徑比」的可分辨度限制（相鄰圈數差距約 0.0024）
   };
   GEO.INNER_RI = GEO.RI - GEO.INNER_T;
   GEO.CAP_R = GEO.FRAME_T / 2;                          // 端帽半徑 1.4
@@ -2571,6 +2571,20 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
   }
 
   /* --------------------------------------------------- 資料打包（5 進位） */
+  const LEN_DIGITS = 4;
+  function encodeLength(len) {
+    const d = new Uint8Array(LEN_DIGITS);
+    let x = len;
+    for (let i = 0; i < LEN_DIGITS; i++) { d[i] = x % 5; x = Math.floor(x / 5); }
+    return d;
+  }
+  function decodeLength(digits, offset = 0) {
+    let x = 0;
+    for (let i = LEN_DIGITS - 1; i >= 0; i--) {
+      x = x * 5 + (digits[offset + i] | 0);
+    }
+    return x;
+  }
   const CHUNK_BYTES = 32;
   const digitsForBytes = b => Math.ceil(b * 8 / LOG2_5);
   function packCost(cBytes) {
@@ -2578,11 +2592,13 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     while (rem > 0) { const b = Math.min(CHUNK_BYTES, rem); total += digitsForBytes(b); rem -= b; }
     return total;
   }
+  function dataCells(v) { return totalCells(v) - LEN_DIGITS; }
   function capacityBytes(v) {
     v = wrapVersion(v);
     if (_cap[v] == null) {
-      let c = Math.floor(totalCells(v) * LOG2_5 / 8);
-      while (c > 1 && packCost(c) > totalCells(v)) c--;
+      const avail = dataCells(v);
+      let c = Math.floor(avail * LOG2_5 / 8);
+      while (c > 1 && packCost(c) > avail) c--;
       _cap[v] = c;
     }
     return _cap[v];
@@ -2839,7 +2855,10 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     const payload = new Uint8Array(plan.data); payload.set(bytes);
     const codeword = rsEncode(payload, plan.ec);
     const M = totalCells(v);
-    const digits = packBytes(codeword, M);
+    const digits = new Uint8Array(M);
+    digits.set(encodeLength(bytes.length), 0);
+    const codeDigits = packBytes(codeword, M - LEN_DIGITS);
+    digits.set(codeDigits, LEN_DIGITS);
     const cells = [];
     let idx = 0;
     for (let k = 0; k < v; k++) {
@@ -2853,8 +2872,8 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     return {
       ok: true, format: FORMAT, version: v, rings: v, ecLevel: ecIdx, ecKey: EC_LEVELS[ecIdx].key,
       ecBytes: plan.ec, dataBytes: plan.data, capBytes: plan.cap,
-      corrected: plan.t, totalCells: M, usedDigits: packCost(codeword.length),
-      cells, digits, codeword, bytes, meta,
+      corrected: plan.t, totalCells: M, usedDigits: LEN_DIGITS + packCost(codeword.length),
+      cells, digits, codeword, bytes, meta, contentLength: bytes.length,
       radiusOuter: frameOuter(v), radiusInner: GEO.RI,
       radiusInnerHole: GEO.INNER_RI
     };
@@ -3940,19 +3959,22 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     }
 
     /* ---- 反打包 + RS 糾錯 ---- */
-    const raw = unpackBytes(digits, plan.cap);
+    const rawLen = decodeLength(digits, 0);
+    const codeDigits = digits.subarray(LEN_DIGITS);
+    const raw = unpackBytes(codeDigits, plan.cap);
     const rs = rsDecode(raw, plan.ec);
     if (!rs.ok) {
       const f = R_('RS:' + rs.reason + '(' + widths.map(x => x.toFixed(1)).join(',') + ')');
       if (opts._dbgLast) { opts._dbgLast.cells = cells; opts._dbgLast.digits = digits; opts._dbgLast.v = v; opts._dbgLast.raw = Array.from(raw); }
       return f;
     }
-    const payload = rs.msg.slice(0, plan.data);
+    const dataLen = (rawLen >= 0 && rawLen <= plan.data) ? rawLen : plan.data;
+    const payload = rs.msg.slice(0, dataLen);
     const cellErrs = cells.filter(c => c.conf > 0 && c.conf < 0.5).length;
     return {
       ok: true, bytes: payload, format: FORMAT, version: v, rings: v, ecLevel: ecIdx, ecKey: EC_LEVELS[ecIdx].key,
-      ecBytes: plan.ec, dataBytes: plan.data, correctedBytes: rs.errors,
-      text: utf8Decode(trimZeros(payload)), cells, digits,
+      ecBytes: plan.ec, dataBytes: plan.data, correctedBytes: rs.errors, contentLength: dataLen,
+      text: utf8Decode(payload) ?? utf8Decode(trimZeros(payload)), cells, digits,
       meta: { fmt: hdr.fmt, ecIdx, index: hdr.index, widths: hdr.widths, measured: widths.map(x => +x.toFixed(2)) },
       mirror: !!mirror, metaErrors: hdr.err,
       geometry: {
@@ -4585,11 +4607,12 @@ footer{position:relative;z-index:2;border-top:1px solid var(--line);background:v
     EC_KEY: ['L', 'M', 'Q', 'H'],
     ringRadius, ringCells, totalCells, cellAt, bodyOuter, frameInner, frameOuter, metaMid, metaPsi, metaModuleDeg, capShadowDeg, META_PATTERNS,
     capacityBytes, packCost, digitsForBytes, packBytes, unpackBytes,
+    LEN_DIGITS, encodeLength, decodeLength,
     rsEncode, rsDecode, rsGenPoly,
     headerEncode, headerDecode, ecPlan, wrapVersion,
     encode, decodeImage, renderCode, toSVG, encodePNG, utf8Decode, utf8Encode, toU8, trimZeros,
     contrastRatio, relLum, styleContrast, styleStops, styleAlpha, rgbHex,
-    _internal: { toGray, downscale, binarize, labelComponents, pickCandidates, envelope, fitRing, solveN, refineAffine, makeMapper, makeAffineMapper, makeHomographyMapper, mapperToH, invert3, mul3, boundaryProfiles, findBoundaryGap, fitHomographyFromProfiles, cyclicRuns, collectPixels, tryHypothesis, headerDecode, capacityBytes }
+    _internal: { toGray, downscale, binarize, labelComponents, pickCandidates, envelope, fitRing, solveN, refineAffine, makeMapper, makeAffineMapper, makeHomographyMapper, mapperToH, invert3, mul3, boundaryProfiles, findBoundaryGap, fitHomographyFromProfiles, cyclicRuns, collectPixels, tryHypothesis, headerDecode, capacityBytes, encodeLength, decodeLength }
   };
 });
 

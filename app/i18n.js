@@ -995,7 +995,7 @@
   <li><b>內框</b>：外緣 6u、內孔 3.8u 的圓環，用來對準圓心與比例。</li>
 </ul>
 <h3>圈數與容量</h3>
-<p>沒有版本號。圈數由<b>內框與外框的半徑比例</b>決定：比例越大圈數越多、能放的內容也越多，4 圈約 45 bytes，16 圈約 230 bytes。「進階選項」裡可以指定圈數與容錯等級，平常交給自動就好。</p>
+<p>沒有版本號。圈數由<b>內框與外框的半徑比例</b>決定：比例越大圈數越多、能放的內容也越多，4 圈約 24 bytes，24 圈約 477 bytes。「進階選項」裡可以指定圈數與容錯等級，平常交給自動就好。</p>
 <h3>每顆芝麻的資訊量</h3>
 <p>芝麻是 2u × 1u 的橢圓，相對於該處的切線可以轉 0° / 45° / 90° / 135°，再加上「沒有芝麻」，共 <b>5 種狀態</b>，每格 log<sub>2</sub>5 ≈ 2.32 bit。</p>
 <h3>三種外形</h3>
@@ -1070,7 +1070,7 @@
   <li><b>内框</b>：外缘 6u、内孔 3.8u 的圆环，用来对准圆心与比例。</li>
 </ul>
 <h3>圈数与容量</h3>
-<p>没有版本号。圈数由<b>内框与外框的半径比例</b>决定：比例越大圈数越多、能放的内容也越多，4 圈约 45 bytes，16 圈约 230 bytes。「高级选项」里可以指定圈数与纠错等级，平常交给自动就好。</p>
+<p>没有版本号。圈数由<b>内框与外框的半径比例</b>决定：比例越大圈数越多、能放的内容也越多，4 圈约 24 bytes，24 圈约 477 bytes。「高级选项」里可以指定圈数与纠错等级，平常交给自动就好。</p>
 <h3>每颗芝麻的信息量</h3>
 <p>芝麻是 2u × 1u 的椭圆，相对于该处的切线可以转 0° / 45° / 90° / 135°，再加上「没有芝麻」，共 <b>5 种状态</b>，每格 log<sub>2</sub>5 ≈ 2.32 bit。</p>
 <h3>三种外形</h3>
@@ -1145,7 +1145,7 @@
   <li><b>Inner frame</b>: a ring from 6u to a 3.8u bore, used to find the centre and the scale.</li>
 </ul>
 <h3>Rings and capacity</h3>
-<p>There are no version numbers. The ring count comes from the <b>radius ratio between the inner and outer frame</b>: the larger the ratio, the more rings and the more room. Four rings hold about 45 bytes, sixteen about 230 bytes. Advanced options let you pin the ring count and the error-correction level.</p>
+<p>There are no version numbers. The ring count comes from the <b>radius ratio between the inner and outer frame</b>: the larger the ratio, the more rings and the more room. Four rings hold about 24 bytes, twenty-four about 477 bytes. Advanced options let you pin the ring count and the error-correction level.</p>
 <h3>Bits per seed</h3>
 <p>A seed is a 2u x 1u ellipse that can sit at 0°, 45°, 90° or 135° to the local tangent, plus the empty state — <b>5 states</b> per slot, log<sub>2</sub>5 ≈ 2.32 bit.</p>
 <h3>Three shapes</h3>
@@ -1220,7 +1220,7 @@
   <li><b>内枠</b>：外縁 6u・内孔 3.8u のリング。中心と縮尺の基準になります。</li>
 </ul>
 <h3>リング数と容量</h3>
-<p>バージョン番号はありません。リング数は<b>内枠と外枠の半径比</b>で決まり、比が大きいほど多く入ります（4 リングで約 45 バイト、16 リングで約 230 バイト）。詳細設定でリング数と誤り訂正を固定できます。</p>
+<p>バージョン番号はありません。リング数は<b>内枠と外枠の半径比</b>で決まり、比が大きいほど多く入ります（4 リングで約 24 バイト、24 リングで約 477 バイト）。詳細設定でリング数と誤り訂正を固定できます。</p>
 <h3>ゴマ一粒の情報量</h3>
 <p>ゴマは 2u × 1u の楕円で、接線に対して 0° / 45° / 90° / 135° に回せます。空きも含めて <b>5 状態</b>、1 マスあたり log<sub>2</sub>5 ≈ 2.32 bit。</p>
 <h3>三つのかたち</h3>

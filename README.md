@@ -21,6 +21,8 @@
 
 # 範例芝碼
 
+- NTE：
+![NTE](docs/example-0.png)
 - 芝碼編輯器頁面：
 ![芝碼編輯器](docs/example-1.png)
 - 蘋果汁咖啡廳 Discord 伺服器：

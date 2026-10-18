@@ -99,7 +99,7 @@
     META_MINW: 2,       // 每段長度 ∈ {2,3,4} 格
     META_MAXW: 4,
     MIN_VERSION: 4,     // 支援的圈數（格數由內外環比例自動決定，非版本號）
-    MAX_VERSION: 16     // 上限受「內外緣半徑比」的可分辨度限制（相鄰圈數差距約 0.0024）
+    MAX_VERSION: 24     // 上限受「內外緣半徑比」的可分辨度限制（相鄰圈數差距約 0.0024）
   };
   GEO.INNER_RI = GEO.RI - GEO.INNER_T;
   GEO.CAP_R = GEO.FRAME_T / 2;                          // 端帽半徑 1.4
@@ -140,6 +140,20 @@
   }
 
   /* --------------------------------------------------- 資料打包（5 進位） */
+  const LEN_DIGITS = 4;
+  function encodeLength(len) {
+    const d = new Uint8Array(LEN_DIGITS);
+    let x = len;
+    for (let i = 0; i < LEN_DIGITS; i++) { d[i] = x % 5; x = Math.floor(x / 5); }
+    return d;
+  }
+  function decodeLength(digits, offset = 0) {
+    let x = 0;
+    for (let i = LEN_DIGITS - 1; i >= 0; i--) {
+      x = x * 5 + (digits[offset + i] | 0);
+    }
+    return x;
+  }
   const CHUNK_BYTES = 32;
   const digitsForBytes = b => Math.ceil(b * 8 / LOG2_5);
   function packCost(cBytes) {
@@ -147,11 +161,13 @@
     while (rem > 0) { const b = Math.min(CHUNK_BYTES, rem); total += digitsForBytes(b); rem -= b; }
     return total;
   }
+  function dataCells(v) { return totalCells(v) - LEN_DIGITS; }
   function capacityBytes(v) {
     v = wrapVersion(v);
     if (_cap[v] == null) {
-      let c = Math.floor(totalCells(v) * LOG2_5 / 8);
-      while (c > 1 && packCost(c) > totalCells(v)) c--;
+      const avail = dataCells(v);
+      let c = Math.floor(avail * LOG2_5 / 8);
+      while (c > 1 && packCost(c) > avail) c--;
       _cap[v] = c;
     }
     return _cap[v];
@@ -408,7 +424,10 @@
     const payload = new Uint8Array(plan.data); payload.set(bytes);
     const codeword = rsEncode(payload, plan.ec);
     const M = totalCells(v);
-    const digits = packBytes(codeword, M);
+    const digits = new Uint8Array(M);
+    digits.set(encodeLength(bytes.length), 0);
+    const codeDigits = packBytes(codeword, M - LEN_DIGITS);
+    digits.set(codeDigits, LEN_DIGITS);
     const cells = [];
     let idx = 0;
     for (let k = 0; k < v; k++) {
@@ -422,8 +441,8 @@
     return {
       ok: true, format: FORMAT, version: v, rings: v, ecLevel: ecIdx, ecKey: EC_LEVELS[ecIdx].key,
       ecBytes: plan.ec, dataBytes: plan.data, capBytes: plan.cap,
-      corrected: plan.t, totalCells: M, usedDigits: packCost(codeword.length),
-      cells, digits, codeword, bytes, meta,
+      corrected: plan.t, totalCells: M, usedDigits: LEN_DIGITS + packCost(codeword.length),
+      cells, digits, codeword, bytes, meta, contentLength: bytes.length,
       radiusOuter: frameOuter(v), radiusInner: GEO.RI,
       radiusInnerHole: GEO.INNER_RI
     };
@@ -1509,19 +1528,22 @@
     }
 
     /* ---- 反打包 + RS 糾錯 ---- */
-    const raw = unpackBytes(digits, plan.cap);
+    const rawLen = decodeLength(digits, 0);
+    const codeDigits = digits.subarray(LEN_DIGITS);
+    const raw = unpackBytes(codeDigits, plan.cap);
     const rs = rsDecode(raw, plan.ec);
     if (!rs.ok) {
       const f = R_('RS:' + rs.reason + '(' + widths.map(x => x.toFixed(1)).join(',') + ')');
       if (opts._dbgLast) { opts._dbgLast.cells = cells; opts._dbgLast.digits = digits; opts._dbgLast.v = v; opts._dbgLast.raw = Array.from(raw); }
       return f;
     }
-    const payload = rs.msg.slice(0, plan.data);
+    const dataLen = (rawLen >= 0 && rawLen <= plan.data) ? rawLen : plan.data;
+    const payload = rs.msg.slice(0, dataLen);
     const cellErrs = cells.filter(c => c.conf > 0 && c.conf < 0.5).length;
     return {
       ok: true, bytes: payload, format: FORMAT, version: v, rings: v, ecLevel: ecIdx, ecKey: EC_LEVELS[ecIdx].key,
-      ecBytes: plan.ec, dataBytes: plan.data, correctedBytes: rs.errors,
-      text: utf8Decode(trimZeros(payload)), cells, digits,
+      ecBytes: plan.ec, dataBytes: plan.data, correctedBytes: rs.errors, contentLength: dataLen,
+      text: utf8Decode(payload) ?? utf8Decode(trimZeros(payload)), cells, digits,
       meta: { fmt: hdr.fmt, ecIdx, index: hdr.index, widths: hdr.widths, measured: widths.map(x => +x.toFixed(2)) },
       mirror: !!mirror, metaErrors: hdr.err,
       geometry: {
@@ -2154,10 +2176,11 @@
     EC_KEY: ['L', 'M', 'Q', 'H'],
     ringRadius, ringCells, totalCells, cellAt, bodyOuter, frameInner, frameOuter, metaMid, metaPsi, metaModuleDeg, capShadowDeg, META_PATTERNS,
     capacityBytes, packCost, digitsForBytes, packBytes, unpackBytes,
+    LEN_DIGITS, encodeLength, decodeLength,
     rsEncode, rsDecode, rsGenPoly,
     headerEncode, headerDecode, ecPlan, wrapVersion,
     encode, decodeImage, renderCode, toSVG, encodePNG, utf8Decode, utf8Encode, toU8, trimZeros,
     contrastRatio, relLum, styleContrast, styleStops, styleAlpha, rgbHex,
-    _internal: { toGray, downscale, binarize, labelComponents, pickCandidates, envelope, fitRing, solveN, refineAffine, makeMapper, makeAffineMapper, makeHomographyMapper, mapperToH, invert3, mul3, boundaryProfiles, findBoundaryGap, fitHomographyFromProfiles, cyclicRuns, collectPixels, tryHypothesis, headerDecode, capacityBytes }
+    _internal: { toGray, downscale, binarize, labelComponents, pickCandidates, envelope, fitRing, solveN, refineAffine, makeMapper, makeAffineMapper, makeHomographyMapper, mapperToH, invert3, mul3, boundaryProfiles, findBoundaryGap, fitHomographyFromProfiles, cyclicRuns, collectPixels, tryHypothesis, headerDecode, capacityBytes, encodeLength, decodeLength }
   };
 });

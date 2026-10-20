@@ -1471,6 +1471,11 @@
   Object.keys(GRAD_NAME).forEach(c => {
     Object.keys(GRAD_NAME[c]).forEach(id => { dict[c]['grad.' + id] = GRAD_NAME[c][id]; });
   });
+  dict['zh-Hant']['github.repo'] = '前往 GitHub 專案';
+  dict['zh-Hans']['github.repo'] = '前往 GitHub 项目';
+  dict['en']['github.repo'] = 'Open the GitHub repository';
+  dict['ja']['github.repo'] = 'GitHub リポジトリを開く';
+
   let lang = 'zh-Hant';
   const listeners = [];
 
